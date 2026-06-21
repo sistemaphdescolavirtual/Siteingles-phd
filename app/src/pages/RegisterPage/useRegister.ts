@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useCursorEffect } from '@/hooks/useCursorEffect';
 import type { UserRole } from '@/types';
+import { api } from '@/services/api';
 
 export type Step = 'curso' | 'dados';
 
@@ -12,6 +14,7 @@ export function useRegister() {
   const [moduloSelecionado, setModuloSelecionado] = useState('');
   const [preSelected, setPreSelected] = useState(false);
 
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [documento, setDocumento] = useState('');
@@ -25,37 +28,66 @@ export function useRegister() {
   const [codigoValido, setCodigoValido] = useState<boolean | null>(null);
   const [validandoCodigo, setValidandoCodigo] = useState(false);
 
-  const { register, getProfessorByCodigo } = useAuthStore();
-
   useCursorEffect();
 
-  // Pre-select course from sessionStorage
   useEffect(() => {
     const curso = sessionStorage.getItem('cursoAdquirido') as 'ingles' | 'enem' | null;
     const modulo = sessionStorage.getItem('moduloAdquirido');
+
     if (curso) {
       if (curso === 'ingles') setInglesAtivado(true);
       if (curso === 'enem') setEnemAtivado(true);
       if (modulo) setModuloSelecionado(modulo);
+
       setPreSelected(true);
       setStep('dados');
     }
   }, []);
 
-  // Validate professor code with debounce
   useEffect(() => {
-    if (perfil === 'aluno' && codigoProfessor.trim().length >= 10) {
-      setValidandoCodigo(true);
-      const timer = setTimeout(() => {
-        const professor = getProfessorByCodigo(codigoProfessor.trim().toUpperCase());
-        setCodigoValido(!!professor);
-        setValidandoCodigo(false);
-      }, 500);
-      return () => clearTimeout(timer);
-    } else {
+    if (perfil !== 'aluno') {
       setCodigoValido(null);
+      return;
     }
-  }, [codigoProfessor, perfil, getProfessorByCodigo]);
+
+    const codigo = codigoProfessor.trim().toUpperCase();
+
+    if (codigo.length < 10) {
+      setCodigoValido(null);
+      return;
+    }
+
+    let ativo = true;
+
+    async function validarCodigo() {
+      try {
+        setValidandoCodigo(true);
+
+        await api.validateProfessorCode(codigo);
+
+        if (ativo) {
+          setCodigoValido(true);
+        }
+      } catch {
+        if (ativo) {
+          setCodigoValido(false);
+        }
+      } finally {
+        if (ativo) {
+          setValidandoCodigo(false);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => {
+      void validarCodigo();
+    }, 500);
+
+    return () => {
+      ativo = false;
+      clearTimeout(timer);
+    };
+  }, [codigoProfessor, perfil]);
 
   const handleIsProfessor = () => {
     setPerfil('professor');
@@ -64,59 +96,114 @@ export function useRegister() {
 
   const handleCourseNext = () => {
     setError('');
+
     if (!inglesAtivado && !enemAtivado) {
       setError('Selecione ao menos um curso para continuar.');
       return;
     }
+
     if (inglesAtivado && !moduloSelecionado) {
       setError('Selecione uma modalidade do curso de Inglês.');
       return;
     }
+
     setPerfil('aluno');
     setStep('dados');
   };
 
-  const cursoAdquirido = inglesAtivado ? 'ingles' : enemAtivado ? 'enem' : undefined;
+  const cursoAdquirido = inglesAtivado
+    ? 'ingles'
+    : enemAtivado
+      ? 'enem'
+      : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    if (!perfil) { setError('Selecione um perfil (Professor ou Aluno)'); return; }
-    if (perfil === 'aluno') {
-      if (!codigoProfessor.trim()) { setError('Informe o código do professor'); return; }
-      const professor = getProfessorByCodigo(codigoProfessor.trim().toUpperCase());
-      if (!professor) { setError('Código do professor inválido.'); return; }
-    }
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const result = register({
-      email, senha, documento, role: perfil,
-      codigoProfessor: perfil === 'aluno' ? codigoProfessor.trim().toUpperCase() : undefined,
-      cursoAdquirido: perfil === 'aluno' ? cursoAdquirido : undefined,
-      moduloAdquirido: perfil === 'aluno' && inglesAtivado ? moduloSelecionado : undefined,
-    });
-    if (result.success) {
+
+    try {
+      setError('');
+
+      if (!perfil) {
+        setError('Selecione um perfil (Professor ou Aluno).');
+        return;
+      }
+
+      if (!nome.trim() || !email.trim() || !senha.trim() || !documento.trim()) {
+        setError('Nome, email, senha e documento são obrigatórios.');
+        return;
+      }
+
+      if (perfil === 'aluno' && !codigoProfessor.trim()) {
+        setError('Informe o código do professor.');
+        return;
+      }
+
+      setIsLoading(true);
+
+      const result = await api.register({
+        nome: nome.trim(),
+        email: email.trim(),
+        password: senha,
+        documento: documento.trim(),
+        role: perfil === 'professor' ? 'professor' : 'aluno',
+        codigoProfessor:
+          perfil === 'aluno'
+            ? codigoProfessor.trim().toUpperCase()
+            : undefined,
+        cursoAdquirido:
+          perfil === 'aluno'
+            ? cursoAdquirido
+            : undefined,
+        moduloAdquirido:
+          perfil === 'aluno' && inglesAtivado
+            ? moduloSelecionado
+            : undefined,
+      });
+
       sessionStorage.removeItem('cursoAdquirido');
       sessionStorage.removeItem('moduloAdquirido');
+
+      useAuthStore.setState({
+        currentUser: result.user,
+        isAuthenticated: true,
+      });
+
       setSuccess(true);
-    } else {
-      setError(result.message || 'Erro ao criar conta');
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Erro ao criar conta',
+      );
+    } finally {
       setIsLoading(false);
     }
   };
 
   return {
-    step, setStep,
-    inglesAtivado, setInglesAtivado,
-    enemAtivado, setEnemAtivado,
-    moduloSelecionado, setModuloSelecionado,
+    step,
+    setStep,
+    inglesAtivado,
+    setInglesAtivado,
+    enemAtivado,
+    setEnemAtivado,
+    moduloSelecionado,
+    setModuloSelecionado,
     preSelected,
-    email, setEmail,
-    senha, setSenha,
-    documento, setDocumento,
-    perfil, setPerfil,
-    codigoProfessor, setCodigoProfessor,
-    showPassword, setShowPassword,
+    nome,
+    setNome,
+    email,
+    setEmail,
+    senha,
+    setSenha,
+    documento,
+    setDocumento,
+    perfil,
+    setPerfil,
+    codigoProfessor,
+    setCodigoProfessor,
+    showPassword,
+    setShowPassword,
     isLoading,
     error,
     success,

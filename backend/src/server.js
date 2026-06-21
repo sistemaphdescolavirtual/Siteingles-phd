@@ -5,6 +5,7 @@ import cors from 'cors';
 
 import { supabase } from './config/supabase.js';
 import modulesRouter from './routes/modules.routes.js';
+import authRouter from './routes/auth.routes.js';
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/modules', modulesRouter);
+app.use('/api/auth', authRouter);
 
 app.use((_req, res) => {
   return res.status(404).json({
