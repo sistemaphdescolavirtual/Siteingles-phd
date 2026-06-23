@@ -1,14 +1,27 @@
-
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, ArrowLeft, Mail, Lock, FileText, User, Check, X, Target, Globe } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  Mail,
+  Lock,
+  FileText,
+  User,
+  Check,
+  X,
+  Target,
+  Globe,
+} from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Page } from '@/App';
+
 import { useRegister } from './useRegister';
 import { CourseCard } from './components/CourseCard';
-import { MODULOS_INGLES } from './constants';
+import { MODULOS_INGLES, MODULOS_ENEM } from './constants';
 
 interface RegisterPageProps {
   navigateTo: (page: Page) => void;
@@ -16,25 +29,56 @@ interface RegisterPageProps {
 
 export default function RegisterPage({ navigateTo }: RegisterPageProps) {
   const {
-    step, setStep,
-    inglesAtivado, setInglesAtivado,
-    enemAtivado, setEnemAtivado,
-    moduloSelecionado, setModuloSelecionado,
-    preSelected, perfil,
-    nome, setNome,
-    email, setEmail, senha, setSenha,
-    documento, setDocumento,
-    codigoProfessor, setCodigoProfessor,
-    showPassword, setShowPassword,
-    isLoading, error, success,
-    codigoValido, validandoCodigo,
-    handleIsProfessor, handleCourseNext, handleSubmit,
+    step,
+    setStep,
+
+    inglesAtivado,
+    setInglesAtivado,
+
+    enemAtivado,
+    setEnemAtivado,
+
+    moduloSelecionado,
+    setModuloSelecionado,
+
+    preSelected,
+    perfil,
+
+    nome,
+    setNome,
+
+    email,
+    setEmail,
+
+    senha,
+    setSenha,
+
+    documento,
+    setDocumento,
+
+    codigoProfessor,
+    setCodigoProfessor,
+
+    showPassword,
+    setShowPassword,
+
+    isLoading,
+    error,
+    success,
+
+    codigoValido,
+    validandoCodigo,
+
+    handleIsProfessor,
+    handleCourseNext,
+    handleSubmit,
   } = useRegister();
 
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#050505] px-4 relative overflow-hidden">
         <div className="noise-overlay" />
+
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -45,7 +89,9 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
           </div>
 
           <h2 className="text-3xl font-bold font-display text-white mb-3">
-            {perfil === 'professor' ? 'Bem-vindo, Professor!' : 'Cadastro realizado!'}
+            {perfil === 'professor'
+              ? 'Bem-vindo, Professor!'
+              : 'Cadastro realizado!'}
           </h2>
 
           <p className="text-gray-400 max-w-xs mx-auto">
@@ -68,17 +114,21 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
         animate={{ x: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #0d1f15 100%)' }}
+        style={{
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #0d1f15 100%)',
+        }}
       >
         <div className="absolute inset-0">
           <div
             className="absolute top-20 right-20 w-64 h-64 rounded-full blur-3xl"
             style={{ background: 'rgba(16,185,129,0.15)' }}
           />
+
           <div
             className="absolute bottom-20 left-20 w-96 h-96 rounded-full blur-3xl"
             style={{ background: 'rgba(0,255,136,0.08)' }}
           />
+
           <div
             className="absolute inset-0 opacity-5"
             style={{
@@ -166,7 +216,11 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          transition={{
+            duration: 0.8,
+            delay: 0.3,
+            ease: [0.16, 1, 0.3, 1],
+          }}
           className="max-w-md w-full mx-auto"
         >
           <motion.button
@@ -181,6 +235,7 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
             className="flex items-center gap-2 text-gray-500 hover:text-brand-green transition-colors mb-10 text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
+
             {step === 'dados' && !preSelected && perfil !== 'professor'
               ? 'Voltar'
               : 'Voltar para início'}
@@ -198,6 +253,7 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                   <h1 className="text-3xl font-bold font-display text-white mb-2">
                     Escolha seu curso
                   </h1>
+
                   <p className="text-gray-500">
                     Selecione o que você deseja estudar
                   </p>
@@ -208,25 +264,33 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                     title="ENEM"
                     icon={<Target className="w-5 h-5" />}
                     active={enemAtivado}
-                    onClick={() => setEnemAtivado(!enemAtivado)}
+                    onClick={() => {
+                      setEnemAtivado(true);
+                      setInglesAtivado(false);
+                      setModuloSelecionado('');
+                    }}
                   />
 
                   <CourseCard
                     title="Inglês"
                     icon={<Globe className="w-5 h-5" />}
                     active={inglesAtivado}
-                    onClick={() => setInglesAtivado(!inglesAtivado)}
+                    onClick={() => {
+                      setInglesAtivado(true);
+                      setEnemAtivado(false);
+                      setModuloSelecionado('');
+                    }}
                   />
                 </div>
 
-                {inglesAtivado && (
+                {(inglesAtivado || enemAtivado) && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     className="mb-8 space-y-3"
                   >
                     <Label className="text-gray-400 text-xs uppercase tracking-wider">
-                      Modalidade de Inglês
+                      {inglesAtivado ? 'Modalidade de Inglês' : 'Modalidade ENEM'}
                     </Label>
 
                     <RadioGroup
@@ -234,37 +298,40 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                       onValueChange={setModuloSelecionado}
                       className="grid gap-2"
                     >
-                      {MODULOS_INGLES.map((mod) => (
-                        <label
-                          key={mod.id}
-                          className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                            moduloSelecionado === mod.id
-                              ? 'bg-brand-green/10 border-brand-green/50'
-                              : 'bg-white/5 border-white/10 hover:border-white/20'
-                          }`}
-                        >
-                          <div className="flex flex-col">
-                            <span
-                              className={`text-sm font-bold ${
-                                moduloSelecionado === mod.id
-                                  ? 'text-brand-green'
-                                  : 'text-white'
-                              }`}
-                            >
-                              {mod.label}
-                            </span>
-                            <span className="text-[10px] text-gray-500">
-                              {mod.desc}
-                            </span>
-                          </div>
+                      {(inglesAtivado ? MODULOS_INGLES : MODULOS_ENEM).map(
+                        (mod) => (
+                          <label
+                            key={mod.id}
+                            className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                              moduloSelecionado === mod.id
+                                ? 'bg-brand-green/10 border-brand-green/50'
+                                : 'bg-white/5 border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            <div className="flex flex-col">
+                              <span
+                                className={`text-sm font-bold ${
+                                  moduloSelecionado === mod.id
+                                    ? 'text-brand-green'
+                                    : 'text-white'
+                                }`}
+                              >
+                                {mod.label}
+                              </span>
 
-                          <RadioGroupItem value={mod.id} className="sr-only" />
+                              <span className="text-[10px] text-gray-500">
+                                {mod.desc}
+                              </span>
+                            </div>
 
-                          {moduloSelecionado === mod.id && (
-                            <Check className="w-4 h-4 text-brand-green" />
-                          )}
-                        </label>
-                      ))}
+                            <RadioGroupItem value={mod.id} className="sr-only" />
+
+                            {moduloSelecionado === mod.id && (
+                              <Check className="w-4 h-4 text-brand-green" />
+                            )}
+                          </label>
+                        ),
+                      )}
                     </RadioGroup>
                   </motion.div>
                 )}
@@ -304,8 +371,11 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
               >
                 <div className="mb-8">
                   <h1 className="text-3xl font-bold font-display text-white mb-2">
-                    {perfil === 'professor' ? 'Cadastro Professor' : 'Seus Dados'}
+                    {perfil === 'professor'
+                      ? 'Cadastro Professor'
+                      : 'Seus Dados'}
                   </h1>
+
                   <p className="text-gray-500">
                     Complete as informações para criar sua conta
                   </p>
@@ -316,8 +386,10 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                     <Label className="text-gray-400 text-sm">
                       Nome completo
                     </Label>
+
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+
                       <Input
                         value={nome}
                         onChange={e => setNome(e.target.value)}
@@ -332,8 +404,10 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                     <Label className="text-gray-400 text-sm">
                       Email
                     </Label>
+
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+
                       <Input
                         type="email"
                         value={email}
@@ -349,8 +423,10 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                     <Label className="text-gray-400 text-sm">
                       Senha
                     </Label>
+
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         value={senha}
@@ -359,6 +435,7 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                         required
                         className="pl-10 pr-10 h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-brand-green"
                       />
+
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
@@ -377,8 +454,10 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                     <Label className="text-gray-400 text-sm">
                       CPF ou Documento
                     </Label>
+
                     <div className="relative">
                       <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+
                       <Input
                         value={documento}
                         onChange={e => setDocumento(e.target.value)}
@@ -394,17 +473,22 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                       <Label className="text-gray-400 text-sm">
                         Código do Professor
                       </Label>
+
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+
                         <Input
                           value={codigoProfessor}
-                          onChange={e => setCodigoProfessor(e.target.value.toUpperCase())}
+                          onChange={e =>
+                            setCodigoProfessor(e.target.value.toUpperCase())
+                          }
                           placeholder="PROF-SIODGN"
                           required
                           className={`pl-10 pr-10 h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-brand-green ${
                             codigoValido === false ? 'border-red-500/50' : ''
                           }`}
                         />
+
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                           {validandoCodigo ? (
                             <div className="w-4 h-4 border-2 border-brand-green/30 border-t-brand-green rounded-full animate-spin" />
@@ -436,7 +520,11 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
                     {isLoading ? (
                       <motion.div
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: 'linear',
+                        }}
                         className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full"
                       />
                     ) : (

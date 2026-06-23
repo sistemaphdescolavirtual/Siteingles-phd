@@ -5,3 +5,31 @@ export const MODULOS_INGLES = [
   { id: 'ingles-4', label: '4 aulas semanais',  desc: 'Alta intensidade para resultados rápidos' },
   { id: 'ingles-5', label: '5 aulas semanais',  desc: 'Imersão total no idioma' },
 ];
+
+export const MODULOS_ENEM = [
+  {
+    id: 'enem-basico',
+    label: 'ENEM Básico',
+    desc: 'Plano inicial com revisão dos principais conteúdos',
+  },
+  {
+    id: 'enem-completo',
+    label: 'ENEM Completo',
+    desc: 'Preparação completa com teoria, exercícios e simulados',
+  },
+  {
+    id: 'enem-redacao',
+    label: 'Redação ENEM',
+    desc: 'Foco em repertório, estrutura textual e correção de redações',
+  },
+  {
+    id: 'enem-intensivo',
+    label: 'ENEM Intensivo',
+    desc: 'Ritmo acelerado para quem precisa revisar em menos tempo',
+  },
+  {
+    id: 'enem-simulados',
+    label: 'Simulados + Correção',
+    desc: 'Treino com simulados, análise de desempenho e correções',
+  },
+];

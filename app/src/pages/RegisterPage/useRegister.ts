@@ -97,15 +97,17 @@ export function useRegister() {
   const handleCourseNext = () => {
     setError('');
 
-    if (!inglesAtivado && !enemAtivado) {
-      setError('Selecione ao menos um curso para continuar.');
-      return;
-    }
 
-    if (inglesAtivado && !moduloSelecionado) {
-      setError('Selecione uma modalidade do curso de Inglês.');
-      return;
-    }
+if (!inglesAtivado && !enemAtivado) {
+  setError('Selecione ao menos um curso para continuar.');
+  return;
+}
+
+if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
+  setError('Selecione uma modalidade para continuar.');
+  return;
+}
+
 
     setPerfil('aluno');
     setStep('dados');
@@ -155,7 +157,7 @@ export function useRegister() {
             ? cursoAdquirido
             : undefined,
         moduloAdquirido:
-          perfil === 'aluno' && inglesAtivado
+          perfil === 'aluno' 
             ? moduloSelecionado
             : undefined,
       });
