@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import type { Activity } from '@/types';
+import type { Activity, User } from '@/types';
 
 export type TabValue = 'cursos' | 'atividades' | 'chat' | 'notificacoes';
 
@@ -15,25 +15,71 @@ export function useStudentDashboard() {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(null);
 
   const store = useAuthStore() as any;
-  const { currentUser, getAtividadesByAluno, getPendingNotifications, getResolvedNotifications } = store;
 
-  const atividades: Activity[] = currentUser ? (getAtividadesByAluno?.(currentUser.id) ?? []) : [];
-  const pendingNotifications: any[] = currentUser ? (getPendingNotifications?.(currentUser.id) ?? []) : [];
-  const resolvedNotifications: any[] = currentUser ? (getResolvedNotifications?.(currentUser.id) ?? []) : [];
-  const professor = currentUser ? (store.getProfessorByAluno?.(currentUser.id) ?? null) : null;
+  const currentUser = store.currentUser as User | null;
+  const users = (store.users ?? []) as User[];
 
-  const cursoAdquirido = currentUser?.cursoAdquirido || 'ingles';
-  const cursoNome = cursoAdquirido === 'ingles' ? 'Inglês' : 'ENEM';
-  const cursoBloqueado = cursoAdquirido === 'ingles' ? 'ENEM' : 'Inglês';
+  const todasAtividades: Activity[] = currentUser
+    ? store.getAtividadesByAluno?.(currentUser.id) ?? []
+    : [];
+
+  const cursoAdquirido = currentUser?.cursoAdquirido ?? null;
+
+  const atividades: Activity[] = cursoAdquirido
+    ? todasAtividades.filter((atividade) => atividade.curso === cursoAdquirido)
+    : todasAtividades;
+
+  const pendingNotifications: any[] = currentUser
+    ? store.getPendingNotifications?.(currentUser.id) ?? []
+    : [];
+
+  const resolvedNotifications: any[] = currentUser
+    ? store.getResolvedNotifications?.(currentUser.id) ?? []
+    : [];
+
+  const professor =
+    currentUser?.professorId
+      ? users.find(
+          (user) =>
+            user.id === currentUser.professorId &&
+            user.role === 'professor',
+        ) ?? null
+      : currentUser?.codigoProfessor
+        ? store.getProfessorByCodigo?.(currentUser.codigoProfessor) ?? null
+        : null;
+
+  const cursoNome =
+    cursoAdquirido === 'ingles'
+      ? 'Inglês'
+      : cursoAdquirido === 'enem'
+        ? 'ENEM'
+        : 'Nenhum curso';
+
+  const cursoBloqueado =
+    cursoAdquirido === 'ingles'
+      ? 'ENEM'
+      : cursoAdquirido === 'enem'
+        ? 'Inglês'
+        : 'Inglês ou ENEM';
 
   const atividadesRecentes = [...atividades]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() -
+        new Date(a.createdAt).getTime(),
+    )
     .slice(0, 5);
 
   const totalAtividades = atividades.length;
-  const corretas = atividades.filter(a => a.correctionStatus === 'correta').length;
-  const pendentes = atividades.filter(a => a.correctionStatus === 'pendente').length;
-  const emAnalise = atividades.filter(a => a.correctionStatus === 'em_analise').length;
+  const corretas = atividades.filter(
+    (atividade) => atividade.correctionStatus === 'correta',
+  ).length;
+  const pendentes = atividades.filter(
+    (atividade) => atividade.correctionStatus === 'pendente',
+  ).length;
+  const emAnalise = atividades.filter(
+    (atividade) => atividade.correctionStatus === 'em_analise',
+  ).length;
 
   const handleActivityClick = (activity: Activity) => {
     setSelectedActivity(activity);
@@ -41,20 +87,48 @@ export function useStudentDashboard() {
   };
 
   return {
-    activeTab, setActiveTab,
-    showNotifDropdown, setShowNotifDropdown,
+    activeTab,
+    setActiveTab,
+
+    showNotifDropdown,
+    setShowNotifDropdown,
+
     selectedActivity,
-    showActivityModal, setShowActivityModal,
-    showChatModal, setShowChatModal,
-    expandedCurso, setExpandedCurso,
-    showSettings, setShowSettings,
-    selectedCalendarDay, setSelectedCalendarDay,
+
+    showActivityModal,
+    setShowActivityModal,
+
+    showChatModal,
+    setShowChatModal,
+
+    expandedCurso,
+    setExpandedCurso,
+
+    showSettings,
+    setShowSettings,
+
+    selectedCalendarDay,
+    setSelectedCalendarDay,
+
     currentUser,
-    atividades, atividadesRecentes,
-    pendingNotifications, resolvedNotifications,
+
+    atividades,
+    atividadesRecentes,
+
+    pendingNotifications,
+    resolvedNotifications,
+
     professor,
-    cursoAdquirido, cursoNome, cursoBloqueado,
-    totalAtividades, corretas, pendentes, emAnalise,
+
+    cursoAdquirido,
+    cursoNome,
+    cursoBloqueado,
+
+    totalAtividades,
+    corretas,
+    pendentes,
+    emAnalise,
+
     handleActivityClick,
   };
 }
