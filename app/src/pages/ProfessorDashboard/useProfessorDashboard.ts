@@ -94,33 +94,36 @@ export function useProfessorDashboard() {
 
   const currentUser = useAuthStore((state) => state.currentUser);
 
-  useEffect(() => {
-    if (!currentUser?.id || currentUser.role !== 'professor') {
-      return;
-    }
+useEffect(() => {
+  const professorId = currentUser?.id;
+  const professorRole = currentUser?.role;
 
-    let ativo = true;
+  if (!professorId || professorRole !== 'professor') {
+    return;
+  }
 
-    async function carregarAlunos() {
-      try {
-        const data = await request<ApiUser[]>(
-          `/professor/${currentUser.id}/students`,
-        );
+  let ativo = true;
 
-        if (ativo) {
-          setAlunosReais(data.map(mapApiUser));
-        }
-      } catch (error) {
-        console.error('Erro ao carregar alunos do professor:', error);
+  async function carregarAlunos() {
+    try {
+      const data = await request<ApiUser[]>(
+        `/professor/${professorId}/students`,
+      );
+
+      if (ativo) {
+        setAlunosReais(data.map(mapApiUser));
       }
+    } catch (error) {
+      console.error('Erro ao carregar alunos do professor:', error);
     }
+  }
 
-    void carregarAlunos();
+  void carregarAlunos();
 
-    return () => {
-      ativo = false;
-    };
-  }, [currentUser?.id, currentUser?.role]);
+  return () => {
+    ativo = false;
+  };
+}, [currentUser?.id, currentUser?.role]);
 
   const alunosAprovados = alunosReais.filter(
     (aluno) => aluno.status === 'aprovado',
