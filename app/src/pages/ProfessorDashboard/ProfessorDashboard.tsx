@@ -331,7 +331,14 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
         </Tabs>
       </main>
 
-      <CreateActivityModal isOpen={showCreateActivity} onClose={() => setShowCreateActivity(false)} aluno={selectedAluno} curso={selectedCurso} />
+   <CreateActivityModal
+  isOpen={showCreateActivity}
+  onClose={() => setShowCreateActivity(false)}
+  aluno={selectedAluno}
+  curso={selectedCurso}
+  professorId={currentUser?.id}
+  onCreated={() => window.location.reload()}
+/>
       <ActivityDetailModal isOpen={showActivityDetail} onClose={() => setShowActivityDetail(false)} activity={selectedActivity} onCorrigir={handleCorrigir} />
       <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} aluno={selectedChatAluno} />
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser} />

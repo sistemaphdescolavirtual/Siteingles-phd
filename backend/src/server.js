@@ -8,6 +8,7 @@ import { supabase } from './config/supabase.js';
 import modulesRouter from './routes/modules.routes.js';
 import authRouter from './routes/auth.routes.js';
 import professorRouter from './routes/professor.routes.js';
+import activitiesRouter from './routes/activities.routes.js';
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/modules', modulesRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/professor', professorRouter);
+app.use('/api/activities', activitiesRouter);
 
 app.use((_req, res) => {
   return res.status(404).json({
