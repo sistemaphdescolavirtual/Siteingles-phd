@@ -1,6 +1,6 @@
-
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { api } from '@/services/api';
 import type {
   User,
   Activity,
@@ -90,40 +90,34 @@ export function useProfessorDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [alunosReais, setAlunosReais] = useState<User[]>([]);
-  const [atividades] = useState<Activity[]>([]);
+  const [atividades, setAtividades] = useState<Activity[]>([]);
 
   const currentUser = useAuthStore((state) => state.currentUser);
 
-useEffect(() => {
-  const professorId = currentUser?.id;
-  const professorRole = currentUser?.role;
+  const recarregarDados = async () => {
+    const professorId = currentUser?.id;
+    const professorRole = currentUser?.role;
 
-  if (!professorId || professorRole !== 'professor') {
-    return;
-  }
-
-  let ativo = true;
-
-  async function carregarAlunos() {
-    try {
-      const data = await request<ApiUser[]>(
-        `/professor/${professorId}/students`,
-      );
-
-      if (ativo) {
-        setAlunosReais(data.map(mapApiUser));
-      }
-    } catch (error) {
-      console.error('Erro ao carregar alunos do professor:', error);
+    if (!professorId || professorRole !== 'professor') {
+      return;
     }
-  }
 
-  void carregarAlunos();
+    try {
+      const [alunosData, atividadesData] = await Promise.all([
+        request<ApiUser[]>(`/professor/${professorId}/students`),
+        api.getProfessorActivities(professorId),
+      ]);
 
-  return () => {
-    ativo = false;
+      setAlunosReais(alunosData.map(mapApiUser));
+      setAtividades(atividadesData);
+    } catch (error) {
+      console.error('Erro ao carregar dados do professor:', error);
+    }
   };
-}, [currentUser?.id, currentUser?.role]);
+
+  useEffect(() => {
+    void recarregarDados();
+  }, [currentUser?.id, currentUser?.role]);
 
   const alunosAprovados = alunosReais.filter(
     (aluno) => aluno.status === 'aprovado',
@@ -325,5 +319,7 @@ useEffect(() => {
     handleActivityClick,
     handleCorrigir,
     handleChatClick,
+
+    recarregarDados,
   };
 }

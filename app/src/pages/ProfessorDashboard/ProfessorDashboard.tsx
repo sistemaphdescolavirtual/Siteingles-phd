@@ -36,7 +36,7 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
     atividades, alunosPorCurso, filteredAlunos, atividadesPorCurso,
     getAlunoById,
     handleAprovar, handleRejeitar,
-    handleActivityClick, handleCorrigir, handleChatClick,
+    handleActivityClick, handleCorrigir, handleChatClick,recarregarDados,
   } = useProfessorDashboard();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -337,7 +337,7 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
   aluno={selectedAluno}
   curso={selectedCurso}
   professorId={currentUser?.id}
-  onCreated={() => window.location.reload()}
+  onCreated={recarregarDados}
 />
       <ActivityDetailModal isOpen={showActivityDetail} onClose={() => setShowActivityDetail(false)} activity={selectedActivity} onCorrigir={handleCorrigir} />
       <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} aluno={selectedChatAluno} />
