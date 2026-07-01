@@ -280,4 +280,268 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.post('/:activityId/response', async (req, res) => {
+  try {
+    const activityId = String(req.params.activityId ?? '').trim();
+    const alunoId = String(req.body.alunoId ?? '').trim();
+    const tipo = String(req.body.tipo ?? 'texto').trim().toLowerCase();
+    const conteudo = String(req.body.conteudo ?? '').trim();
+
+    if (!activityId || !alunoId || !conteudo) {
+      return res.status(400).json({
+        error: 'Atividade, aluno e resposta são obrigatórios.',
+      });
+    }
+
+    if (!['texto', 'concluido'].includes(tipo)) {
+      return res.status(400).json({
+        error: 'Tipo de resposta inválido.',
+      });
+    }
+
+    const { data: activity, error: activityError } = await supabaseAdmin
+      .from('activities')
+      .select('id, professor_id, aluno_id, titulo')
+      .eq('id', activityId)
+      .maybeSingle();
+
+    if (activityError) {
+      console.error('Erro ao buscar atividade:', activityError);
+
+      return res.status(500).json({
+        error: 'Erro ao buscar atividade.',
+        details: activityError.message,
+      });
+    }
+
+    if (!activity) {
+      return res.status(404).json({
+        error: 'Atividade não encontrada.',
+      });
+    }
+
+    if (activity.aluno_id !== alunoId) {
+      return res.status(403).json({
+        error: 'Esta atividade não pertence a este aluno.',
+      });
+    }
+
+   console.log('Resposta recebida:', {
+  activityId,
+  alunoId,
+  tipo,
+  conteudo,
+});
+
+const { data: savedResponse, error: responseError } = await supabaseAdmin
+  .from('activity_responses')
+  .upsert(
+    {
+      activity_id: activityId,
+      tipo,
+      conteudo,
+      enviado_em: new Date().toISOString(),
+    },
+    {
+      onConflict: 'activity_id',
+    },
+  )
+  .select('activity_id, tipo, conteudo, enviado_em')
+  .single();
+
+if (responseError) {
+  console.error('Erro ao salvar resposta:', responseError);
+
+  return res.status(500).json({
+    error: 'Não foi possível salvar a resposta.',
+    details: responseError.message,
+  });
+}
+
+console.log('Resposta salva no banco:', savedResponse);
+
+    const { error: updateActivityError } = await supabaseAdmin
+      .from('activities')
+      .update({
+        status: 'concluida',
+        correction_status: 'em_analise',
+        correction_feedback: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', activityId);
+
+    if (updateActivityError) {
+      console.error('Erro ao atualizar atividade:', updateActivityError);
+
+      return res.status(500).json({
+        error: 'Resposta salva, mas não foi possível atualizar a atividade.',
+        details: updateActivityError.message,
+      });
+    }
+
+    await supabaseAdmin.from('notifications').insert({
+      user_id: activity.professor_id,
+      title: 'Nova resposta de atividade',
+      message: `O aluno enviou uma resposta para: ${activity.titulo}`,
+      type: 'atividade',
+      read: false,
+      resolved: false,
+      data: {
+        atividadeId: activityId,
+        alunoId,
+      },
+    });
+
+    const { data: updatedActivity, error: selectError } = await supabaseAdmin
+      .from('activities')
+      .select(activitySelect)
+      .eq('id', activityId)
+      .single();
+
+    if (selectError) {
+      console.error('Erro ao buscar atividade atualizada:', selectError);
+
+      return res.status(200).json({
+        message: 'Resposta enviada com sucesso.',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Resposta enviada com sucesso.',
+      activity: mapActivity(updatedActivity),
+    });
+  } catch (error) {
+    console.error('Erro inesperado ao responder atividade:', error);
+
+    return res.status(500).json({
+      error: 'Erro interno ao responder atividade.',
+      details: error.message,
+    });
+  }
+});
+
+router.patch('/:activityId/correction', async (req, res) => {
+  try {
+    const activityId = String(req.params.activityId ?? '').trim();
+    const professorId = String(req.body.professorId ?? '').trim();
+    const correctionStatus = String(req.body.correctionStatus ?? '').trim();
+    const correctionFeedback = String(req.body.correctionFeedback ?? '').trim();
+
+    if (!activityId || !professorId || !correctionStatus) {
+      return res.status(400).json({
+        error: 'Atividade, professor e status da correção são obrigatórios.',
+      });
+    }
+
+    if (!['correta', 'incorreta', 'devolvida'].includes(correctionStatus)) {
+      return res.status(400).json({
+        error: 'Status de correção inválido.',
+      });
+    }
+
+    if (
+      ['incorreta', 'devolvida'].includes(correctionStatus) &&
+      !correctionFeedback
+    ) {
+      return res.status(400).json({
+        error: 'Feedback é obrigatório para atividade incorreta ou devolvida.',
+      });
+    }
+
+    const { data: activity, error: activityError } = await supabaseAdmin
+      .from('activities')
+      .select('id, professor_id, aluno_id, titulo')
+      .eq('id', activityId)
+      .maybeSingle();
+
+    if (activityError) {
+      console.error('Erro ao buscar atividade:', activityError);
+
+      return res.status(500).json({
+        error: 'Erro ao buscar atividade.',
+        details: activityError.message,
+      });
+    }
+
+    if (!activity) {
+      return res.status(404).json({
+        error: 'Atividade não encontrada.',
+      });
+    }
+
+    if (activity.professor_id !== professorId) {
+      return res.status(403).json({
+        error: 'Esta atividade não pertence a este professor.',
+      });
+    }
+
+    const newActivityStatus =
+      correctionStatus === 'devolvida' ? 'pendente' : 'concluida';
+
+    const { error: updateError } = await supabaseAdmin
+      .from('activities')
+      .update({
+        status: newActivityStatus,
+        correction_status: correctionStatus,
+        correction_feedback: correctionFeedback || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', activityId);
+
+    if (updateError) {
+      console.error('Erro ao corrigir atividade:', updateError);
+
+      return res.status(500).json({
+        error: 'Não foi possível salvar a correção.',
+        details: updateError.message,
+      });
+    }
+
+    await supabaseAdmin.from('notifications').insert({
+      user_id: activity.aluno_id,
+      title:
+        correctionStatus === 'devolvida'
+          ? 'Atividade devolvida para revisão'
+          : 'Atividade corrigida',
+      message:
+        correctionStatus === 'devolvida'
+          ? `Sua atividade "${activity.titulo}" foi devolvida para revisão.`
+          : `Sua atividade "${activity.titulo}" foi corrigida pelo professor.`,
+      type: 'atividade',
+      read: false,
+      resolved: false,
+      data: {
+        atividadeId: activityId,
+        correctionStatus,
+      },
+    });
+
+    const { data: updatedActivity, error: selectError } = await supabaseAdmin
+      .from('activities')
+      .select(activitySelect)
+      .eq('id', activityId)
+      .single();
+
+    if (selectError) {
+      console.error('Erro ao buscar atividade corrigida:', selectError);
+
+      return res.status(200).json({
+        message: 'Correção salva com sucesso.',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Correção salva com sucesso.',
+      activity: mapActivity(updatedActivity),
+    });
+  } catch (error) {
+    console.error('Erro inesperado ao corrigir atividade:', error);
+
+    return res.status(500).json({
+      error: 'Erro interno ao corrigir atividade.',
+      details: error.message,
+    });
+  }
+});
+
 export default router;

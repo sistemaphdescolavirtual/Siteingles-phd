@@ -93,6 +93,16 @@ interface CreateActivityPayload {
     url: string;
   }>;
 }
+interface SubmitActivityResponsePayload {
+  alunoId: string;
+  tipo?: 'texto' | 'concluido';
+  conteudo: string;
+}
+interface SubmitActivityCorrectionPayload {
+  professorId: string;
+  correctionStatus: 'correta' | 'incorreta' | 'devolvida';
+  correctionFeedback?: string;
+}
 
 function mapApiUser(apiUser: ApiUser): User {
   return {
@@ -234,6 +244,7 @@ export const api = {
     return response.map(mapApiActivity);
   },
 
+
   getStudentActivities: async (studentId: string) => {
     const response = await request<ApiActivity[]>(
       `/activities/student/${encodeURIComponent(studentId)}`,
@@ -241,4 +252,41 @@ export const api = {
 
     return response.map(mapApiActivity);
   },
+
+  submitActivityResponse: async (
+    activityId: string,
+    payload: SubmitActivityResponsePayload,
+  ) => {
+    const response = await request<{
+      message: string;
+      activity: ApiActivity;
+    }>(`/activities/${encodeURIComponent(activityId)}/response`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      message: response.message,
+      activity: mapApiActivity(response.activity),
+    };
+  },
+
+  submitActivityCorrection: async (
+    activityId: string,
+    payload: SubmitActivityCorrectionPayload,
+  ) => {
+    const response = await request<{
+      message: string;
+      activity: ApiActivity;
+    }>(`/activities/${encodeURIComponent(activityId)}/correction`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      message: response.message,
+      activity: mapApiActivity(response.activity),
+    };
+  },
 };
+

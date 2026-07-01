@@ -254,13 +254,43 @@ export function useProfessorDashboard() {
     setShowActivityDetail(true);
   };
 
-  const handleCorrigir = (
-    _status: ActivityCorrectionStatus,
-    _feedback?: string,
-  ) => {
+  const handleCorrigir = async (
+  status: ActivityCorrectionStatus,
+  feedback?: string,
+) => {
+  if (!selectedActivity || !currentUser?.id) {
+    return;
+  }
+
+  try {
+    const response = await api.submitActivityCorrection(selectedActivity.id, {
+      professorId: currentUser.id,
+      correctionStatus: status as 'correta' | 'incorreta' | 'devolvida',
+      correctionFeedback: feedback,
+    });
+
+    setAtividades((atividadesAtuais) =>
+      atividadesAtuais.map((atividade) =>
+        atividade.id === response.activity.id
+          ? response.activity
+          : atividade,
+      ),
+    );
+
     setShowActivityDetail(false);
     setSelectedActivity(null);
-  };
+
+    await recarregarDados();
+  } catch (error) {
+    console.error('Erro ao corrigir atividade:', error);
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Erro ao corrigir atividade.',
+    );
+  }
+};
 
   const handleChatClick = (alunoId: string) => {
     const aluno = getAlunoById(alunoId);

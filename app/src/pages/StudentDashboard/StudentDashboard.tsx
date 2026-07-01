@@ -9,10 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/shared/Avatar';
 import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge';
-import { SettingsModal } from '@/components/shared/SettingsModal';
 import { ActivityCalendar } from '@/components/shared/ActivityCalendar';
 import { ActivityModal } from './components/ActivityModal';
-import { ChatModal } from './components/ChatModal';
 import { useStudentDashboard } from './useStudentDashboard';
 import type { Activity } from '@/types';
 
@@ -23,9 +21,9 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
     activeTab, setActiveTab,
     showNotifDropdown, setShowNotifDropdown,
     selectedActivity, showActivityModal, setShowActivityModal,
-    showChatModal, setShowChatModal,
+    setShowChatModal,
     expandedCurso, setExpandedCurso,
-    showSettings, setShowSettings,
+    setShowSettings,
     selectedCalendarDay, setSelectedCalendarDay,
     currentUser,
     atividades, atividadesRecentes,
@@ -33,6 +31,7 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
     professor, cursoNome, cursoBloqueado,
     totalAtividades, corretas, pendentes, emAnalise,
     handleActivityClick,
+recarregarAtividades,
   } = useStudentDashboard();
 
   const filteredAtividades = selectedCalendarDay
@@ -376,9 +375,12 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
         </Tabs>
       </main>
 
-      <ActivityModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)} activity={selectedActivity} />
-      <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} professor={professor} />
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser} />
+      <ActivityModal
+  isOpen={showActivityModal}
+  onClose={() => setShowActivityModal(false)}
+  activity={selectedActivity}
+  onSubmitted={recarregarAtividades}
+/>
     </div>
   );
 }
