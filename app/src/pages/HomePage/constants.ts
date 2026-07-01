@@ -13,7 +13,7 @@ export const MARQUEE_ITEMS = [
 export const HERO_STATS = [
   { icon: 'users',  value: '10k+', label: 'Alunos formados',   color: 'emerald', delay: '0ms'   },
   { icon: 'play',   value: '500+', label: 'Aulas disponíveis', color: 'emerald', delay: '100ms' },
-  { icon: 'trophy', value: '98%',  label: 'Taxa de aprovação', color: 'emerald', delay: '200ms', featured: true },
+  { icon: 'trophy', value: '95%',  label: 'Taxa de aprovação', color: 'emerald', delay: '200ms', featured: true },
   { icon: 'globe',  value: '15+',  label: 'Países alcançados', color: 'lime',    delay: '300ms' },
 ];
 
