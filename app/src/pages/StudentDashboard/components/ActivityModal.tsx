@@ -47,11 +47,15 @@ export function ActivityModal({
     return null;
   }
 
-  const canSubmit =
-    activity.correctionStatus === 'devolvida' ||
-    (!activity.resposta &&
-      activity.correctionStatus !== 'correta' &&
-      activity.correctionStatus !== 'em_analise');
+const canResubmit =
+  activity.correctionStatus === 'devolvida' ||
+  activity.correctionStatus === 'incorreta';
+
+const canSubmit =
+  canResubmit ||
+  (!activity.resposta &&
+    activity.correctionStatus !== 'correta' &&
+    activity.correctionStatus !== 'em_analise');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,14 +186,16 @@ export function ActivityModal({
               </section>
             )}
 
-            {activity.correctionStatus === 'devolvida' && (
-              <div className="flex items-center gap-4 p-5 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
-                <RotateCcw className="w-5 h-5 text-orange-400 shrink-0" />
-                <p className="text-orange-300 text-sm font-medium">
-                  Sua atividade foi devolvida para revisão. Corrija e reenvie abaixo.
-                </p>
-              </div>
-            )}
+           {canResubmit && (
+  <div className="flex items-center gap-4 p-5 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
+    <RotateCcw className="w-5 h-5 text-orange-400 shrink-0" />
+    <p className="text-orange-300 text-sm font-medium">
+      {activity.correctionStatus === 'incorreta'
+        ? 'Sua atividade foi marcada como incorreta. Veja o feedback, corrija e reenvie abaixo.'
+        : 'Sua atividade foi devolvida para revisão. Corrija e reenvie abaixo.'}
+    </p>
+  </div>
+)}
 
             {submitted ? (
               <motion.div

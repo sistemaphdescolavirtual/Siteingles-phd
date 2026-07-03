@@ -47,6 +47,9 @@ export interface Activity {
   correctionStatus: ActivityCorrectionStatus; // Status de correção
   correctionFeedback?: string; // Feedback do professor
   createdAt: Date;
+  publishAt?: Date;
+  dueAt?: Date;
+
   resposta?: ActivityResponse;
 }
 

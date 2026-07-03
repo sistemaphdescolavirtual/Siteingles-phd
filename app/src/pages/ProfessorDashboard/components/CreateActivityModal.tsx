@@ -45,10 +45,11 @@ export function CreateActivityModal({
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [anexos, setAnexos] = useState<Attachment[]>([]);
-  const [linkInput, setLinkInput] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-
+const [linkInput, setLinkInput] = useState('');
+const [publishAt, setPublishAt] = useState('');
+const [dueAt, setDueAt] = useState('');
+const [isSubmitting, setIsSubmitting] = useState(false);
+const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,29 +105,36 @@ export function CreateActivityModal({
     try {
       setIsSubmitting(true);
 
-      await api.createActivity({
-        professorId,
-        alunoId: aluno.id,
-        curso: normalizeCurso(aluno.cursoAdquirido || curso),
-        titulo,
-        descricao,
-        anexos: anexos.map((anexo) => ({
-          nome: anexo.nome,
-          tipo: anexo.tipo,
-          url: anexo.url,
-        })),
-      });
-
+     await api.createActivity({
+  professorId,
+  alunoId: aluno.id,
+  curso: normalizeCurso(aluno.cursoAdquirido || curso),
+  titulo,
+  descricao,
+  publishAt: publishAt
+    ? new Date(publishAt).toISOString()
+    : undefined,
+  dueAt: dueAt
+    ? new Date(dueAt).toISOString()
+    : undefined,
+  anexos: anexos.map((anexo) => ({
+    nome: anexo.nome,
+    tipo: anexo.tipo,
+    url: anexo.url,
+  })),
+});
       setSuccess(true);
 
       setTimeout(() => {
         setSuccess(false);
         setTitulo('');
         setDescricao('');
+        setPublishAt('');
+        setDueAt('');
         setAnexos([]);
         onCreated?.();
         onClose();
-      }, 1500);
+        }, 1500);
     } catch (error) {
       alert(
         error instanceof Error
@@ -228,6 +236,41 @@ export function CreateActivityModal({
                   className="bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 resize-none text-base cursor-text"
                 />
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-2">
+    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+      Postar em
+    </Label>
+
+    <Input
+      type="datetime-local"
+      value={publishAt}
+      onChange={(e) => setPublishAt(e.target.value)}
+      className="h-14 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-base cursor-text"
+    />
+
+    <p className="text-[10px] text-gray-500">
+      Se deixar vazio, a atividade será publicada agora.
+    </p>
+  </div>
+
+  <div className="space-y-2">
+    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+      Fechar em
+    </Label>
+
+    <Input
+      type="datetime-local"
+      value={dueAt}
+      onChange={(e) => setDueAt(e.target.value)}
+      className="h-14 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-base cursor-text"
+    />
+
+    <p className="text-[10px] text-gray-500">
+      Depois dessa data, o aluno não poderá mais responder.
+    </p>
+  </div>
+</div>
 
               <div className="space-y-4">
                 <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">

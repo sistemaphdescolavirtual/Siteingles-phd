@@ -73,6 +73,8 @@ interface ApiActivity {
   correctionStatus: Activity['correctionStatus'];
   correctionFeedback?: string;
   createdAt: string;
+  publishAt?: string | null;
+  dueAt?: string | null;
   anexos: ApiAttachment[];
   resposta?: {
     tipo: 'arquivo' | 'texto' | 'concluido';
@@ -87,6 +89,8 @@ interface CreateActivityPayload {
   curso: 'ingles' | 'enem';
   titulo: string;
   descricao: string;
+  publishAt?: string;
+  dueAt?: string;
   anexos?: Array<{
     nome: string;
     tipo: Attachment['tipo'];
@@ -137,6 +141,12 @@ function mapApiActivity(apiActivity: ApiActivity): Activity {
     correctionStatus: apiActivity.correctionStatus,
     correctionFeedback: apiActivity.correctionFeedback,
     createdAt: new Date(apiActivity.createdAt),
+    publishAt: apiActivity.publishAt
+  ? new Date(apiActivity.publishAt)
+  : undefined,
+dueAt: apiActivity.dueAt
+  ? new Date(apiActivity.dueAt)
+  : undefined,
     anexos: apiActivity.anexos ?? [],
     resposta: apiActivity.resposta
       ? {

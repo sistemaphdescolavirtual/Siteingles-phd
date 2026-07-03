@@ -14,6 +14,8 @@ const activitySelect = `
   correction_status,
   correction_feedback,
   created_at,
+  publish_at,
+  due_at,
   updated_at,
   activity_attachments (
     id,
@@ -47,6 +49,8 @@ function mapActivity(activity) {
     correctionStatus: activity.correction_status,
     correctionFeedback: activity.correction_feedback ?? undefined,
     createdAt: activity.created_at,
+    publishAt: activity.publish_at,
+    dueAt: activity.due_at,
     anexos: (activity.activity_attachments ?? []).map((attachment) => ({
       id: attachment.id,
       nome: attachment.nome,
@@ -77,6 +81,7 @@ router.get('/student/:studentId', async (req, res) => {
       .from('activities')
       .select(activitySelect)
       .eq('aluno_id', studentId)
+      .lte('publish_at', new Date().toISOString())
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -143,6 +148,33 @@ router.post('/', async (req, res) => {
     const titulo = String(req.body.titulo ?? '').trim();
     const descricao = String(req.body.descricao ?? '').trim();
     const anexos = Array.isArray(req.body.anexos) ? req.body.anexos : [];
+    const publishAtRaw = req.body.publishAt;
+    const dueAtRaw = req.body.dueAt;
+    const publishAt = publishAtRaw
+  ? new Date(publishAtRaw)
+  : new Date();
+
+const dueAt = dueAtRaw
+  ? new Date(dueAtRaw)
+  : null;
+
+if (Number.isNaN(publishAt.getTime())) {
+  return res.status(400).json({
+    error: 'Data de postagem inválida.',
+  });
+}
+
+if (dueAt && Number.isNaN(dueAt.getTime())) {
+  return res.status(400).json({
+    error: 'Data de fechamento inválida.',
+  });
+}
+
+if (dueAt && dueAt <= publishAt) {
+  return res.status(400).json({
+    error: 'A data de fechamento precisa ser depois da data de postagem.',
+  });
+}
 
     if (!professorId || !alunoId || !curso || !titulo || !descricao) {
       return res.status(400).json({
@@ -200,6 +232,8 @@ router.post('/', async (req, res) => {
         descricao,
         status: 'pendente',
         correction_status: 'pendente',
+        publish_at: publishAt.toISOString(),
+        due_at: dueAt ? dueAt.toISOString() : null,
       })
       .select('id')
       .single();
@@ -301,7 +335,7 @@ router.post('/:activityId/response', async (req, res) => {
 
     const { data: activity, error: activityError } = await supabaseAdmin
       .from('activities')
-      .select('id, professor_id, aluno_id, titulo')
+      .select('id, professor_id, aluno_id, titulo, due_at')
       .eq('id', activityId)
       .maybeSingle();
 
@@ -323,6 +357,11 @@ router.post('/:activityId/response', async (req, res) => {
     if (activity.aluno_id !== alunoId) {
       return res.status(403).json({
         error: 'Esta atividade não pertence a este aluno.',
+      });
+    }
+    if (activity.due_at && new Date(activity.due_at) < new Date()) {
+             return res.status(400).json({
+       error: 'O prazo para responder esta atividade já foi encerrado.',
       });
     }
 
@@ -476,7 +515,7 @@ router.patch('/:activityId/correction', async (req, res) => {
     }
 
     const newActivityStatus =
-      correctionStatus === 'devolvida' ? 'pendente' : 'concluida';
+     ['devolvida','incorreta'].includes(correctionStatus) ? 'pendente' : 'concluida';
 
     const { error: updateError } = await supabaseAdmin
       .from('activities')
