@@ -34,14 +34,15 @@ export function useRegister() {
     const curso = sessionStorage.getItem('cursoAdquirido') as 'ingles' | 'enem' | null;
     const modulo = sessionStorage.getItem('moduloAdquirido');
 
-    if (curso) {
-      if (curso === 'ingles') setInglesAtivado(true);
-      if (curso === 'enem') setEnemAtivado(true);
-      if (modulo) setModuloSelecionado(modulo);
+   if (curso) {
+  if (curso === 'ingles') setInglesAtivado(true);
+  if (curso === 'enem') setEnemAtivado(true);
+  if (modulo) setModuloSelecionado(modulo);
 
-      setPreSelected(true);
-      setStep('dados');
-    }
+  setPerfil('aluno');
+  setPreSelected(true);
+  setStep('dados');
+}
   }, []);
 
   useEffect(() => {
@@ -89,10 +90,22 @@ export function useRegister() {
     };
   }, [codigoProfessor, perfil]);
 
-  const handleIsProfessor = () => {
-    setPerfil('professor');
-    setStep('dados');
-  };
+const handleIsProfessor = () => {
+  setError('');
+
+  sessionStorage.removeItem('cursoAdquirido');
+  sessionStorage.removeItem('moduloAdquirido');
+
+  setInglesAtivado(false);
+  setEnemAtivado(false);
+  setModuloSelecionado('');
+  setCodigoProfessor('');
+  setCodigoValido(null);
+
+  setPerfil('professor');
+  setPreSelected(false);
+  setStep('dados');
+};
 
   const handleCourseNext = () => {
     setError('');
