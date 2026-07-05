@@ -77,7 +77,7 @@ const generateUniqueCode = (users: User[]): string => {
 // Mock initial data - Professor com código pré-gerado
 const mockProfessor: User = {
   id: 'prof-1',
-  email: 'professor@eduplatform.com',
+  email: 'professor@phdescolavirtual.com.br',
   documento: '123.456.789-00',
   role: 'professor',
   nome: 'Prof. Ana Silva',
@@ -89,7 +89,7 @@ const mockProfessor: User = {
 // Mock admin — substituir por lookup de API no futuro
 const mockAdmin: User = {
   id: 'admin-1',
-  email: (import.meta as any).env?.VITE_ADMIN_EMAIL ?? 'admin@guienglish.com',
+  email: (import.meta as any).env?.VITE_ADMIN_EMAIL ?? 'admin@phdescolavirtual.com.br',
   documento: '000.000.000-00',
   role: 'admin',
   nome: 'Administrador',
@@ -121,7 +121,7 @@ export const useAuthStore = create<AuthState>()(
 
       loginAdmin: (email: string, senha: string) => {
         const { VITE_ADMIN_EMAIL, VITE_ADMIN_PASSWORD } = (import.meta as any).env ?? {};
-        const adminEmail = VITE_ADMIN_EMAIL ?? 'admin@guienglish.com';
+        const adminEmail = VITE_ADMIN_EMAIL ?? 'admin@phdescolavirtual.com.br';
         const adminPassword = VITE_ADMIN_PASSWORD ?? 'admin123';
         if (email !== adminEmail || senha !== adminPassword) {
           return { success: false, message: 'Credenciais inválidas' };
@@ -472,7 +472,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-    name: 'eduplatform-storage',
+    name: 'phdescolavirtual-storage',
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const toDate = (v: any) => v ? new Date(v) : v;
@@ -486,7 +486,7 @@ export const useAuthStore = create<AuthState>()(
         if (!temAdmin) {
           state.users.push({
             id: 'admin-1',
-            email: 'admin@guienglish.com',
+            email: 'admin@phdescolavirtual.com.br',
             documento: '000.000.000-00',
             role: 'admin',
             nome: 'Administrador',

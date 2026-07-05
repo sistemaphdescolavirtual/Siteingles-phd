@@ -1,9 +1,9 @@
-
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { useCursorEffect } from '@/hooks/useCursorEffect';
 import type { UserRole } from '@/types';
 import { api } from '@/services/api';
+import { registerSchema, formatarCPF } from '@/lib/validation';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
 export type Step = 'curso' | 'dados';
 
@@ -27,8 +27,6 @@ export function useRegister() {
 
   const [codigoValido, setCodigoValido] = useState<boolean | null>(null);
   const [validandoCodigo, setValidandoCodigo] = useState(false);
-
-  useCursorEffect();
 
   useEffect(() => {
     const curso = sessionStorage.getItem('cursoAdquirido') as 'ingles' | 'enem' | null;
@@ -132,8 +130,19 @@ if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
       ? 'enem'
       : undefined;
 
+  const handleDocumentoChange = (value: string) => {
+    setDocumento(formatarCPF(value));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check rate limit
+    const limit = checkRateLimit('register', 5, 60000);
+    if (!limit.allowed) {
+      setError(`Muitas tentativas de cadastro. Tente novamente em ${limit.retryAfter} segundos.`);
+      return;
+    }
 
     try {
       setError('');
@@ -143,8 +152,10 @@ if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
         return;
       }
 
-      if (!nome.trim() || !email.trim() || !senha.trim() || !documento.trim()) {
-        setError('Nome, email, senha e documento são obrigatórios.');
+      // Validate with Zod
+      const validation = registerSchema.safeParse({ nome, email, senha, documento });
+      if (!validation.success) {
+        setError(validation.error.issues[0].message);
         return;
       }
 
@@ -213,6 +224,7 @@ if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
     setSenha,
     documento,
     setDocumento,
+    handleDocumentoChange,
     perfil,
     setPerfil,
     codigoProfessor,

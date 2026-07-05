@@ -83,7 +83,7 @@ export const BENTO_CARDS = [
 
 export const CONTACT_INFO = [
   { icon: 'phone', label: 'WhatsApp', value: '(11) 99999-9999'        },
-  { icon: 'mail',  label: 'E-mail',   value: 'contato@guienglish.com' },
+  { icon: 'mail',  label: 'E-mail',   value: 'contato@phdescolavirtual.com.br' },
   { icon: 'map',   label: 'Endereço', value: 'São Paulo, SP - Brasil'  },
 ];
 

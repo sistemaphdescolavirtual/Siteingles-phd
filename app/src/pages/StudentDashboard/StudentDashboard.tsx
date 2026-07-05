@@ -11,8 +11,10 @@ import { Avatar } from '@/components/shared/Avatar';
 import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge';
 import { ActivityCalendar } from '@/components/shared/ActivityCalendar';
 import { ActivityModal } from './components/ActivityModal';
+import { SettingsModal } from '@/components/shared/SettingsModal';
 import { useStudentDashboard } from './useStudentDashboard';
 import type { Activity } from '@/types';
+import logoPhd from '@/assets/logo_phd.png';
 
 interface StudentDashboardProps { onLogout: () => void; }
 
@@ -21,9 +23,8 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
     activeTab, setActiveTab,
     showNotifDropdown, setShowNotifDropdown,
     selectedActivity, showActivityModal, setShowActivityModal,
-    setShowChatModal,
     expandedCurso, setExpandedCurso,
-    setShowSettings,
+    showSettings, setShowSettings,
     selectedCalendarDay, setSelectedCalendarDay,
     currentUser,
     atividades, atividadesRecentes,
@@ -31,7 +32,7 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
     professor, cursoNome, cursoBloqueado,
     totalAtividades, corretas, pendentes, emAnalise,
     handleActivityClick,
-recarregarAtividades,
+    recarregarAtividades,
   } = useStudentDashboard();
 
   const filteredAtividades = selectedCalendarDay
@@ -68,7 +69,7 @@ recarregarAtividades,
                 <GraduationCap className="w-7 h-7 text-brand-neon" />
               </div>
               <div>
-                <span className="text-xl font-bold font-display tracking-tight">GuiEnglish</span>
+                <img src={logoPhd} alt="PHD Escola Virtual" className="h-10 w-auto object-contain" />
                 <p className="text-[10px] uppercase tracking-[0.2em] text-brand-green font-bold">Área do Aluno</p>
               </div>
             </div>
@@ -131,7 +132,7 @@ recarregarAtividades,
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-bold font-display">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
+              <h1 className="text-4xl font-bold font-display">Olá, <span className="gradient-text">{currentUser?.nome?.split(' ')[0] || 'Aluno'}</span>!</h1>
               <p className="text-gray-500 mt-1">Pronto para continuar seus estudos hoje?</p>
             </div>
             <TabsList className="bg-white/5 border border-white/10 p-1 rounded-2xl h-14">
@@ -303,23 +304,40 @@ recarregarAtividades,
             </motion.div>
           </TabsContent>
 
-          {/* CHAT */}
+          {/* CHAT INLINE */}
           <TabsContent value="chat" className="space-y-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               {professor ? (
-                <div className="glass-panel rounded-[2.5rem] border border-white/5 overflow-hidden">
-                  <div className="p-8 border-b border-white/5 bg-white/[0.02]"><h3 className="text-2xl font-bold font-display">Conversas</h3></div>
-                  <motion.div whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }} onClick={() => setShowChatModal(true)} className="p-8 flex items-center gap-6 cursor-pointer group transition-colors">
-                    <Avatar nome={professor.nome} size="lg" />
-                    <div className="flex-1">
-                      <h4 className="font-bold text-xl group-hover:text-brand-neon transition-colors">{professor.nome}</h4>
-                      <p className="text-[10px] text-brand-neon font-black uppercase tracking-widest mt-1">Seu Instrutor</p>
+                <div className="glass-panel rounded-[2.5rem] border border-white/5 overflow-hidden flex flex-col" style={{ height: '550px' }}>
+                  <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center gap-4 shrink-0">
+                    <Avatar nome={professor.nome} size="md" />
+                    <div>
+                      <h3 className="font-bold text-lg">{professor.nome}</h3>
+                      <p className="text-[10px] text-brand-green font-black uppercase tracking-widest">Seu Instrutor</p>
                     </div>
-                    <Button className="bg-brand-neon hover:bg-brand-lime text-black font-bold rounded-2xl h-12 px-6 cursor-pointer"><MessageSquare className="w-4 h-4 mr-2" /> Abrir Chat</Button>
-                  </motion.div>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center justify-center opacity-20">
+                    <MessageSquare className="w-12 h-12 mb-4" />
+                    <p className="text-sm font-bold uppercase tracking-widest">Inicie uma conversa</p>
+                  </div>
+                  <div className="p-4 border-t border-white/5 shrink-0">
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        placeholder="Digite sua mensagem..."
+                        className="flex-1 h-12 bg-white/5 border border-white/10 rounded-2xl px-4 text-white placeholder-gray-600 outline-none focus:border-brand-green/50 cursor-text"
+                      />
+                      <Button className="w-12 h-12 bg-brand-green hover:bg-emerald-600 text-black rounded-2xl cursor-pointer shrink-0">
+                        <MessageSquare className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="glass-panel rounded-[2.5rem] p-20 border border-white/5 text-center opacity-30"><MessageSquare className="w-16 h-16 mx-auto mb-4" /><p className="font-bold uppercase tracking-widest text-sm">Nenhum professor vinculado</p></div>
+                <div className="glass-panel rounded-[2.5rem] p-20 border border-white/5 text-center opacity-30">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4" />
+                  <p className="font-bold uppercase tracking-widest text-sm">Nenhum professor vinculado</p>
+                </div>
               )}
             </motion.div>
           </TabsContent>
@@ -376,11 +394,16 @@ recarregarAtividades,
       </main>
 
       <ActivityModal
-  isOpen={showActivityModal}
-  onClose={() => setShowActivityModal(false)}
-  activity={selectedActivity}
-  onSubmitted={recarregarAtividades}
-/>
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        activity={selectedActivity}
+        onSubmitted={recarregarAtividades}
+      />
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        currentUser={currentUser}
+      />
     </div>
   );
 }

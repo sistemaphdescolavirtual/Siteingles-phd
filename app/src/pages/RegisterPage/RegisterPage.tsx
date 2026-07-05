@@ -22,6 +22,7 @@ import type { Page } from '@/App';
 import { useRegister } from './useRegister';
 import { CourseCard } from './components/CourseCard';
 import { MODULOS_INGLES, MODULOS_ENEM } from './constants';
+import logoPhd from '@/assets/logo_phd.png';
 
 interface RegisterPageProps {
   navigateTo: (page: Page) => void;
@@ -54,7 +55,7 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
     setSenha,
 
     documento,
-    setDocumento,
+    handleDocumentoChange,
 
     codigoProfessor,
     setCodigoProfessor,
@@ -105,37 +106,25 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] flex text-white font-sans selection:bg-brand-green selection:text-black">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 text-white bg-[#050505] font-sans relative overflow-hidden cursor-default">
+      <style>{`
+        .noise-overlay { pointer-events: none !important; cursor: default !important; }
+        * { cursor: inherit; }
+        a, button, [role="button"] { cursor: pointer; }
+        input { cursor: text; }
+      `}</style>
       <div className="noise-overlay" />
 
-      {/* Left Side */}
+      {/* Left side: Graphic/Intro */}
       <motion.div
-        initial={{ x: '-100%' }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
-        style={{
-          background: 'linear-gradient(135deg, #0a0a0a 0%, #0d1f15 100%)',
-        }}
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="hidden lg:flex flex-col justify-between p-16 relative bg-gradient-to-br from-brand-black to-[#0a0a0a] border-r border-white/5"
       >
         <div className="absolute inset-0">
-          <div
-            className="absolute top-20 right-20 w-64 h-64 rounded-full blur-3xl"
-            style={{ background: 'rgba(16,185,129,0.15)' }}
-          />
-
-          <div
-            className="absolute bottom-20 left-20 w-96 h-96 rounded-full blur-3xl"
-            style={{ background: 'rgba(0,255,136,0.08)' }}
-          />
-
-          <div
-            className="absolute inset-0 opacity-5"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(0,255,136,0.3) 40px, rgba(0,255,136,0.3) 41px)',
-            }}
-          />
+          <div className="absolute top-20 right-20 w-64 h-64 rounded-full blur-3xl" style={{ background: 'rgba(16,185,129,0.15)' }} />
+          <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full blur-3xl" style={{ background: 'rgba(0,255,136,0.08)' }} />
+          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(0,255,136,0.3) 40px, rgba(0,255,136,0.3) 41px)' }} />
         </div>
 
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
@@ -145,18 +134,10 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
             transition={{ delay: 0.5 }}
           >
             <div className="flex items-center gap-3 mb-10">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{
-                  border: '1px solid rgba(0,255,136,0.3)',
-                  background: 'rgba(0,255,136,0.1)',
-                }}
-              >
-                <span className="text-xl font-bold gradient-text">G</span>
-              </div>
+              <img src={logoPhd} alt="PHD" className="h-10 w-auto object-contain" />
 
               <span className="text-xl font-bold font-display">
-                GuiEnglish
+                PHD Escola Virtual
               </span>
             </div>
 
@@ -460,8 +441,9 @@ export default function RegisterPage({ navigateTo }: RegisterPageProps) {
 
                       <Input
                         value={documento}
-                        onChange={e => setDocumento(e.target.value)}
+                        onChange={e => handleDocumentoChange(e.target.value)}
                         placeholder="000.000.000-00"
+                        maxLength={14}
                         required
                         className="pl-10 h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-brand-green"
                       />

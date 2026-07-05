@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Page } from '@/App';
 import { useLogin } from './useLogin';
+import logoPhd from '@/assets/logo_phd.png';
 
 interface LoginPageProps {
   navigateTo: (page: Page) => void;
@@ -13,20 +14,25 @@ interface LoginPageProps {
 export default function LoginPage({ navigateTo }: LoginPageProps) {
   const {
     email, setEmail, senha, setSenha,
-    showPassword, setShowPassword,
-    isLoading, error, handleSubmit,
+    showPassword, setShowPassword, isLoading, error,
+    handleSubmit,
   } = useLogin();
 
   return (
-    <div className="min-h-screen bg-[#050505] flex">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 text-white bg-[#050505] font-sans relative overflow-hidden cursor-default">
+      <style>{`
+        .noise-overlay { pointer-events: none !important; cursor: default !important; }
+        * { cursor: inherit; }
+        a, button, [role="button"] { cursor: pointer; }
+        input { cursor: text; }
+      `}</style>
       <div className="noise-overlay" />
 
-      {/* Left Side */}
+      {/* Left side: Graphic/Intro */}
       <motion.div
-        initial={{ x: '-100%' }} animate={{ x: 0 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #0d1f15 100%)' }}
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="hidden lg:flex flex-col justify-between p-16 relative bg-gradient-to-br from-brand-black to-[#0a0a0a] border-r border-white/5"
       >
         <div className="absolute inset-0">
           <div className="absolute top-20 right-20 w-64 h-64 rounded-full blur-3xl" style={{ background: 'rgba(16,185,129,0.15)' }} />
@@ -37,10 +43,8 @@ export default function LoginPage({ navigateTo }: LoginPageProps) {
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <div className="flex items-center gap-3 mb-10">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ border: '1px solid rgba(0,255,136,0.3)', background: 'rgba(0,255,136,0.1)' }}>
-                <span className="text-xl font-bold gradient-text">G</span>
-              </div>
-              <span className="text-xl font-bold font-display">GuiEnglish</span>
+              <img src={logoPhd} alt="PHD" className="h-10 w-auto object-contain" />
+              <span className="text-xl font-bold font-display">PHD Escola Virtual</span>
             </div>
             <h2 className="text-4xl font-bold font-display mb-4">Bem-vindo<br />de volta.</h2>
             <p className="text-gray-400 max-w-md leading-relaxed">Continue sua jornada de aprendizado.</p>
@@ -128,7 +132,7 @@ export default function LoginPage({ navigateTo }: LoginPageProps) {
           <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-xs text-gray-500 mb-2 font-medium">Credenciais de demonstração:</p>
             <div className="space-y-1 text-xs text-gray-600">
-              <p><span className="text-gray-400">Professor:</span> professor@eduplatform.com / qualquer senha</p>
+              <p><span className="text-gray-400">Professor:</span> professor@phdescolavirtual.com.br / qualquer senha</p>
               <p><span className="text-gray-400">Aluno:</span> Crie uma conta como aluno</p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/authStore';
+import { useCursorEffect } from '@/hooks/useCursorEffect';
 
 // Pages
 import HomePage from '@/pages/HomePage';
@@ -16,6 +17,9 @@ export type Page = 'home' | 'login' | 'register' | 'english-modules' | 'professo
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const { isAuthenticated, currentUser, logout } = useAuthStore();
+
+  // Initialize cursor effect globally
+  useCursorEffect();
 
   // Handle navigation
   const navigateTo = (page: Page) => {
@@ -73,7 +77,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f9fa] font-sans">
+    <div className="min-h-screen bg-[#050505] font-sans">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPage}

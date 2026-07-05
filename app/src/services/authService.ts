@@ -3,7 +3,7 @@
  * Substitua este arquivo por integração real com backend sem tocar em nenhum componente.
  *
  * Credenciais via variáveis de ambiente (.env):
- *   VITE_ADMIN_EMAIL=admin@guienglish.com
+ *   VITE_ADMIN_EMAIL=admin@phdescolavirtual.com.br
  *   VITE_ADMIN_PASSWORD=admin123
  */
 
@@ -21,7 +21,7 @@ interface AuthResult {
 }
 
 const ADMIN: AdminCredentials = {
-  email: import.meta.env.VITE_ADMIN_EMAIL ?? 'admin@guienglish.com',
+  email: import.meta.env.VITE_ADMIN_EMAIL ?? 'admin@phdescolavirtual.com.br',
   password: import.meta.env.VITE_ADMIN_PASSWORD ?? 'admin123',
   role: 'admin',
 };

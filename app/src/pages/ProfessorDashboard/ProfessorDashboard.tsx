@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Bell, LogOut, Users, Plus, FileText, MessageSquare, AlertCircle, CheckCircle, BookOpen, Clock, ChevronDown, ChevronRight, Search, UserCircle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,15 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/shared/Avatar';
 import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge';
-import { SettingsModal } from '@/components/shared/SettingsModal';
 import { NotificationItem } from './components/NotificationItem';
 import { ResolvedNotificationItem } from './components/ResolvedNotificationItem';
 import { ProfessorCodeCard } from './components/ProfessorCodeCard';
 import { CreateActivityModal } from './components/CreateActivityModal';
 import { ActivityDetailModal } from './components/ActivityDetailModal';
-import { ChatModal } from './components/ChatModal';
 import { useProfessorDashboard } from './useProfessorDashboard';
 import type { User } from '@/types';
+import logoPhd from '@/assets/logo_phd.png';
 
 interface ProfessorDashboardProps { onLogout: () => void; }
 
@@ -28,7 +26,6 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
     showCreateActivity, setShowCreateActivity,
     showActivityDetail, setShowActivityDetail,
     selectedActivity,
-    showChatModal, setShowChatModal,
     selectedChatAluno,
     searchTerm, setSearchTerm,
     currentUser,
@@ -36,10 +33,8 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
     atividades, alunosPorCurso, filteredAlunos, atividadesPorCurso,
     getAlunoById,
     handleAprovar, handleRejeitar,
-    handleActivityClick, handleCorrigir, handleChatClick,recarregarDados,
+    handleActivityClick, handleCorrigir, handleChatClick, recarregarDados,
   } = useProfessorDashboard();
-
-  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-brand-neon selection:text-black font-sans relative overflow-hidden cursor-default">
@@ -65,7 +60,7 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
                 <GraduationCap className="w-7 h-7 text-brand-neon" />
               </div>
               <div>
-                <span className="text-xl font-bold font-display tracking-tight">GuiEnglish</span>
+                <img src={logoPhd} alt="PHD Escola Virtual" className="h-10 w-auto object-contain" />
                 <p className="text-[10px] uppercase tracking-[0.2em] text-brand-green font-bold">Painel do Instrutor</p>
               </div>
             </div>
@@ -80,7 +75,7 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                onClick={() => setShowSettings(true)}
+                onClick={() => setActiveTab('configuracoes')}
                 className="p-2.5 rounded-xl bg-brand-green/10 border border-brand-green/30 text-brand-neon hover:bg-brand-green/20 transition-all cursor-pointer"
                 title="Configurações"
               >
@@ -142,6 +137,7 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
               <TabsTrigger value="atividades" className="flex items-center gap-2 rounded-xl px-6 data-[state=active]:bg-brand-green data-[state=active]:text-black font-bold transition-all relative cursor-pointer"><FileText className="w-4 h-4" /><span className="hidden sm:inline">Atividades</span>{atividades.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-neon text-black text-[10px] font-black rounded-full flex items-center justify-center border-2 border-[#050505]">{atividades.length}</span>}</TabsTrigger>
               <TabsTrigger value="chat" className="flex items-center gap-2 rounded-xl px-6 data-[state=active]:bg-brand-green data-[state=active]:text-black font-bold transition-all cursor-pointer"><MessageSquare className="w-4 h-4" /><span className="hidden sm:inline">Chat</span></TabsTrigger>
               <TabsTrigger value="notificacoes" className="flex items-center gap-2 rounded-xl px-6 data-[state=active]:bg-brand-green data-[state=active]:text-black font-bold transition-all cursor-pointer"><Bell className="w-4 h-4" /><span className="hidden sm:inline">Notificações</span></TabsTrigger>
+              <TabsTrigger value="configuracoes" className="flex items-center gap-2 rounded-xl px-5 data-[state=active]:bg-brand-green data-[state=active]:text-black font-bold transition-all cursor-pointer"><Settings className="w-4 h-4" /><span className="hidden sm:inline">Config.</span></TabsTrigger>
             </TabsList>
           </div>
 
@@ -207,8 +203,38 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-4 pt-8 border-t border-white/5">
-                            <Button onClick={() => setShowCreateActivity(true)} className="flex-1 h-14 bg-brand-neon hover:bg-brand-lime text-black font-black rounded-2xl transition-all cursor-pointer"><Plus className="w-5 h-5 mr-2" /> Nova Atividade</Button>
+                          
+                          {/* Atividades do Aluno */}
+                          <div className="border-t border-white/5 pt-8 mt-6">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">
+                              Histórico de Atividades ({atividades.filter(a => a.alunoId === selectedAluno.id).length})
+                            </h4>
+                            {atividades.filter(a => a.alunoId === selectedAluno.id).length === 0 ? (
+                              <p className="text-sm text-gray-500 py-4">Nenhuma atividade criada para este aluno.</p>
+                            ) : (
+                              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2">
+                                {atividades
+                                  .filter(a => a.alunoId === selectedAluno.id)
+                                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                  .map((atv) => (
+                                    <div
+                                      key={atv.id}
+                                      onClick={() => handleActivityClick(atv)}
+                                      className="p-4 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between hover:bg-white/[0.08] transition-all cursor-pointer group"
+                                    >
+                                      <div>
+                                        <h5 className="font-bold text-sm text-white group-hover:text-brand-green transition-colors">{atv.titulo}</h5>
+                                        <span className="text-[10px] text-gray-500 uppercase font-semibold">{new Date(atv.createdAt).toLocaleDateString('pt-BR')}</span>
+                                      </div>
+                                      <CorrectionStatusBadge status={atv.correctionStatus} />
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-4 pt-8 border-t border-white/5 mt-6">
+                            <Button onClick={() => setShowCreateActivity(true)} className="flex-1 h-14 bg-brand-green hover:bg-emerald-600 text-black font-black rounded-2xl transition-all cursor-pointer"><Plus className="w-5 h-5 mr-2" /> Nova Atividade</Button>
                             <Button onClick={() => handleChatClick(selectedAluno.id)} variant="outline" className="flex-1 h-14 border-white/10 text-white hover:bg-white/5 rounded-2xl transition-all cursor-pointer"><MessageSquare className="w-5 h-5 mr-2" /> Abrir Chat</Button>
                           </div>
                         </motion.div>
@@ -281,21 +307,65 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
             </motion.div>
           </TabsContent>
 
-          {/* CHAT */}
+          {/* CHAT INLINE */}
           <TabsContent value="chat" className="space-y-8">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               {Object.values(alunosPorCurso).flat().length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {Object.values(alunosPorCurso).flat().map((aluno: any) => (
-                    <motion.div key={aluno.id} whileHover={{ y: -5 }} onClick={() => handleChatClick(aluno.id)} className="glass-panel rounded-2xl p-6 border border-white/10 hover:border-brand-green/30 transition-all cursor-pointer group">
-                      <div className="flex items-center gap-4 mb-4">
-                        <Avatar nome={aluno.nome} size="lg" />
-                        <div className="flex-1"><h3 className="text-lg font-bold">{aluno.nome}</h3><p className="text-[10px] text-brand-neon font-black uppercase tracking-widest">Online</p></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6" style={{ height: '580px' }}>
+                  {/* Lista de alunos */}
+                  <div className="md:col-span-1 glass-panel rounded-3xl border border-white/10 overflow-y-auto flex flex-col">
+                    <div className="p-4 border-b border-white/5 shrink-0">
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-gray-400">Conversas</h3>
+                    </div>
+                    {Object.values(alunosPorCurso).flat().map((aluno: any) => (
+                      <button
+                        key={aluno.id}
+                        onClick={() => handleChatClick(aluno.id)}
+                        className={`w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors border-b border-white/5 text-left cursor-pointer ${
+                          selectedChatAluno?.id === aluno.id ? 'bg-brand-green/10 border-l-2 border-l-brand-green' : ''
+                        }`}
+                      >
+                        <Avatar nome={aluno.nome} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{aluno.nome}</p>
+                          <p className="text-[10px] text-brand-green uppercase tracking-widest font-bold">Online</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Painel de chat */}
+                  <div className="md:col-span-2 glass-panel rounded-3xl border border-white/10 flex flex-col overflow-hidden">
+                    {selectedChatAluno ? (
+                      <>
+                        <div className="p-5 border-b border-white/5 flex items-center gap-4 shrink-0">
+                          <Avatar nome={selectedChatAluno.nome} size="sm" />
+                          <div>
+                            <h3 className="font-bold">{selectedChatAluno.nome}</h3>
+                            <p className="text-[10px] text-brand-green uppercase tracking-widest font-bold">Online</p>
+                          </div>
+                        </div>
+                        <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center justify-center opacity-30">
+                          <MessageSquare className="w-12 h-12 mb-4" />
+                          <p className="text-sm font-bold uppercase tracking-widest">Inicie a conversa</p>
+                        </div>
+                        <div className="p-4 border-t border-white/5 shrink-0">
+                          <div className="flex gap-3">
+                            <input
+                              type="text"
+                              placeholder="Escreva sua mensagem..."
+                              className="flex-1 h-12 bg-white/5 border border-white/10 rounded-2xl px-4 text-white placeholder-gray-600 outline-none focus:border-brand-green/50 cursor-text"
+                            />
+                            <Button className="w-12 h-12 bg-brand-green hover:bg-emerald-600 text-black rounded-2xl cursor-pointer shrink-0"><MessageSquare className="w-5 h-5" /></Button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center opacity-20">
+                        <MessageSquare className="w-16 h-16 mb-4" />
+                        <p className="font-bold uppercase tracking-widest text-sm">Selecione uma conversa</p>
                       </div>
-                      <p className="text-gray-500 text-sm mb-4">{aluno.email}</p>
-                      <Button className="w-full bg-brand-neon hover:bg-brand-lime text-black font-bold rounded-xl h-10 transition-all cursor-pointer"><MessageSquare className="w-4 h-4 mr-2" /> Iniciar Chat</Button>
-                    </motion.div>
-                  ))}
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-20"><MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" /><p className="text-gray-500 text-lg">Nenhum aluno disponível para chat</p></div>
@@ -328,20 +398,77 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
               </div>
             </motion.div>
           </TabsContent>
+          {/* CONFIGURAÇÕES */}
+          <TabsContent value="configuracoes" className="space-y-8">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto">
+              <div className="glass-panel rounded-[2.5rem] border border-white/10 overflow-hidden">
+                <div className="p-8 border-b border-white/5">
+                  <h2 className="text-3xl font-bold font-display flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-green/10 flex items-center justify-center border border-brand-green/20">
+                      <Settings className="w-6 h-6 text-brand-green" />
+                    </div>
+                    Configurações do Perfil
+                  </h2>
+                  <p className="text-gray-500 mt-2">Gerencie seus dados pessoais e preferências</p>
+                </div>
+                <div className="p-8 space-y-6">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Nome completo</label>
+                    <input
+                      type="text"
+                      defaultValue={currentUser?.nome}
+                      className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">E-mail</label>
+                    <input
+                      type="email"
+                      defaultValue={currentUser?.email}
+                      className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text"
+                    />
+                  </div>
+                  {currentUser?.codigo && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Código de turma</label>
+                      <div className="flex items-center gap-3 bg-brand-green/5 border border-brand-green/15 rounded-xl px-4 py-3">
+                        <code className="font-mono text-brand-green font-bold tracking-wider flex-1">{currentUser.codigo}</code>
+                        <span className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">somente leitura</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="border-t border-white/5 pt-6">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Segurança</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Senha atual</label>
+                        <input type="password" placeholder="••••••••" className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Nova senha</label>
+                        <input type="password" placeholder="••••••••" className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 pt-4">
+                    <Button className="flex-1 h-12 bg-brand-green hover:bg-emerald-600 text-black font-bold rounded-xl cursor-pointer">Salvar Alterações</Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </TabsContent>
         </Tabs>
       </main>
 
-   <CreateActivityModal
-  isOpen={showCreateActivity}
-  onClose={() => setShowCreateActivity(false)}
-  aluno={selectedAluno}
-  curso={selectedCurso}
-  professorId={currentUser?.id}
-  onCreated={recarregarDados}
-/>
+      <CreateActivityModal
+        isOpen={showCreateActivity}
+        onClose={() => setShowCreateActivity(false)}
+        aluno={selectedAluno}
+        curso={selectedCurso}
+        professorId={currentUser?.id}
+        onCreated={recarregarDados}
+      />
       <ActivityDetailModal isOpen={showActivityDetail} onClose={() => setShowActivityDetail(false)} activity={selectedActivity} onCorrigir={handleCorrigir} />
-      <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} aluno={selectedChatAluno} />
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser} />
     </div>
   );
 }

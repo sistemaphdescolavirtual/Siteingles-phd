@@ -7,6 +7,7 @@ import {
   INSTITUTIONAL_CARDS, FEATURES_GRID, BENTO_CARDS,
   CONTACT_INFO, CONTACT_FIELDS,
 } from './constants';
+import logoPhd from '@/assets/logo_phd.png';
 
 interface HomePageProps {
   navigateTo: (page: Page) => void;
@@ -43,12 +44,7 @@ export default function HomePage({ navigateTo }: HomePageProps) {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
               <button onClick={() => navigateTo('home')} className="flex items-center gap-3 group magnetic-btn">
-                <div className="relative w-12 h-12 bg-gradient-to-br from-emerald-500 to-lime-400 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-lg shadow-emerald-500/30 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/20" />
-                  <svg xmlns="http://www.w3.org/2000/svg" className="text-black w-7 h-7 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
-                  </svg>
-                </div>
+                <img src={logoPhd} alt="PHD Escola Virtual" className="h-10 w-auto object-contain" />
                 <div className="flex flex-col">
                   <span className="text-2xl font-bold tracking-tight text-white display-font">PHD</span>
                   <span className="text-[10px] text-emerald-500 tracking-[0.2em] uppercase font-semibold">Escola Virtual</span>
@@ -101,13 +97,7 @@ export default function HomePage({ navigateTo }: HomePageProps) {
 
           <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10 pt-24 lg:pt-8">
             <div className="space-y-6 order-2 lg:order-1">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-emerald-400 text-sm border border-emerald-500/20 magnetic-btn">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                Plataforma de Ensino Online
-              </div>
+
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight">
                 Domine o{' '}
                 <span className="gradient-text italic font-light glitch-text" data-text="Inglês">Inglês</span>
@@ -549,17 +539,28 @@ export default function HomePage({ navigateTo }: HomePageProps) {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
               <div className="lg:col-span-2">
                 <button onClick={() => navigateTo('home')} className="flex items-center gap-3 mb-6 group">
-                  <div className="relative w-12 h-12 bg-gradient-to-br from-emerald-500 to-lime-400 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="text-black w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-                  </div>
+                  <img src={logoPhd} alt="PHD Escola Virtual" className="h-12 w-auto object-contain" />
                   <div className="flex flex-col">
-                    <span className="text-2xl font-bold tracking-tight text-white display-font">GuiEnglish</span>
-                    <span className="text-[10px] text-emerald-500 tracking-[0.2em] uppercase font-semibold">Plataforma de Ensino</span>
+                    <span className="text-2xl font-bold tracking-tight text-white display-font">PHD Escola Virtual</span>
+                    <span className="text-[10px] text-emerald-500 tracking-[0.2em] uppercase font-semibold">Escola Virtual</span>
                   </div>
                 </button>
                 <p className="text-gray-400 max-w-md mb-8 leading-relaxed">
                   Transformando vidas através da educação de qualidade. Cursos de inglês e preparatórios ENEM com metodologia exclusiva e resultados comprovados.
                 </p>
+                <div className="flex items-center gap-4">
+                  <a
+                    href="https://www.instagram.com/phdescolavirtual/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-br from-purple-600/20 to-pink-600/20 border border-purple-500/30 text-white hover:from-purple-600/40 hover:to-pink-600/40 transition-all duration-300 text-sm font-semibold group"
+                  >
+                    <svg className="w-5 h-5 text-pink-400 group-hover:text-pink-300 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                    </svg>
+                    <span>@phdescolavirtual</span>
+                  </a>
+                </div>
               </div>
 
               <div>
@@ -582,7 +583,7 @@ export default function HomePage({ navigateTo }: HomePageProps) {
             </div>
 
             <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-gray-500 text-sm">© 2024 GuiEnglish. Todos os direitos reservados.</p>
+              <p className="text-gray-500 text-sm">© 2024 PHD Escola Virtual. Todos os direitos reservados.</p>
               <div className="flex gap-6 text-sm text-gray-500">
                 <button className="hover:text-emerald-500 transition-colors">Política de Privacidade</button>
                 <button className="hover:text-emerald-500 transition-colors">Termos de Uso</button>

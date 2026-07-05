@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { GraduationCap, ArrowLeft, Sparkles } from 'lucide-react';
 import type { Page } from '@/App';
-import { useCursorEffect } from '@/hooks/useCursorEffect';
 import { ModuleCard } from './components/ModuleCard';
 import { MODULES } from './constants';
 import { api } from '@/services/api';
@@ -18,8 +17,6 @@ export default function EnglishModulesPage({ navigateTo }: EnglishModulesPagePro
   const [modules, setModules] = useState<ModuleCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-
-  useCursorEffect();
 
   useEffect(() => {
     let componentMounted = true;
@@ -114,7 +111,7 @@ export default function EnglishModulesPage({ navigateTo }: EnglishModulesPagePro
                 <GraduationCap className="w-6 h-6 text-black" />
               </div>
               <span className="text-xl font-display font-bold tracking-tight">
-                GuiEnglish
+                PHD Escola Virtual
               </span>
             </div>
 

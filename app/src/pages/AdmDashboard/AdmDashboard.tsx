@@ -15,6 +15,7 @@ import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge
 import { SettingsModal } from '@/components/shared/SettingsModal';
 import { useAdmDashboard } from './useAdmDashboard';
 import type { User, Activity as ActivityType } from '@/types';
+import logoPhd from '@/assets/logo_phd.png';
 
 interface AdmDashboardProps {
   onLogout: () => void;
@@ -641,7 +642,7 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
                 <GraduationCap className="w-7 h-7 text-brand-neon" />
               </div>
               <div>
-                <span className="text-xl font-bold font-display tracking-tight">GuiEnglish</span>
+                <img src={logoPhd} alt="PHD Escola Virtual" className="h-10 w-auto object-contain" />
                 <p className="text-[10px] uppercase tracking-[0.2em] text-brand-green font-bold flex items-center gap-1.5">
                   <Shield className="w-3 h-3" /> Painel Admin
                 </p>

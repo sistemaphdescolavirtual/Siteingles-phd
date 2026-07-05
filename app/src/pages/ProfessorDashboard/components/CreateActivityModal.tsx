@@ -46,8 +46,10 @@ export function CreateActivityModal({
   const [descricao, setDescricao] = useState('');
   const [anexos, setAnexos] = useState<Attachment[]>([]);
 const [linkInput, setLinkInput] = useState('');
-const [publishAt, setPublishAt] = useState('');
-const [dueAt, setDueAt] = useState('');
+const [publishDate, setPublishDate] = useState('');
+const [publishTime, setPublishTime] = useState('');
+const [dueDate, setDueDate] = useState('');
+const [dueTime, setDueTime] = useState('');
 const [isSubmitting, setIsSubmitting] = useState(false);
 const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,11 +113,11 @@ const [success, setSuccess] = useState(false);
   curso: normalizeCurso(aluno.cursoAdquirido || curso),
   titulo,
   descricao,
-  publishAt: publishAt
-    ? new Date(publishAt).toISOString()
+  publishAt: publishDate
+    ? new Date(`${publishDate}T${publishTime || '00:00'}`).toISOString()
     : undefined,
-  dueAt: dueAt
-    ? new Date(dueAt).toISOString()
+  dueAt: dueDate
+    ? new Date(`${dueDate}T${dueTime || '23:59'}`).toISOString()
     : undefined,
   anexos: anexos.map((anexo) => ({
     nome: anexo.nome,
@@ -129,8 +131,10 @@ const [success, setSuccess] = useState(false);
         setSuccess(false);
         setTitulo('');
         setDescricao('');
-        setPublishAt('');
-        setDueAt('');
+        setPublishDate('');
+        setPublishTime('');
+        setDueDate('');
+        setDueTime('');
         setAnexos([]);
         onCreated?.();
         onClose();
@@ -238,37 +242,43 @@ const [success, setSuccess] = useState(false);
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
   <div className="space-y-2">
-    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-      Postar em
-    </Label>
-
-    <Input
-      type="datetime-local"
-      value={publishAt}
-      onChange={(e) => setPublishAt(e.target.value)}
-      className="h-14 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-base cursor-text"
+    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Data de publicação</Label>
+    <input
+      type="date"
+      value={publishDate}
+      onChange={(e) => setPublishDate(e.target.value)}
+      className="w-full h-14 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:border-brand-green/50 outline-none transition-colors cursor-text"
     />
-
-    <p className="text-[10px] text-gray-500">
-      Se deixar vazio, a atividade será publicada agora.
-    </p>
+    <p className="text-[10px] text-gray-500">Se vazio, a atividade será publicada agora.</p>
   </div>
-
   <div className="space-y-2">
-    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-      Fechar em
-    </Label>
-
-    <Input
-      type="datetime-local"
-      value={dueAt}
-      onChange={(e) => setDueAt(e.target.value)}
-      className="h-14 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-base cursor-text"
+    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Horário de publicação</Label>
+    <input
+      type="time"
+      value={publishTime}
+      onChange={(e) => setPublishTime(e.target.value)}
+      className="w-full h-14 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:border-brand-green/50 outline-none transition-colors cursor-text"
     />
-
-    <p className="text-[10px] text-gray-500">
-      Depois dessa data, o aluno não poderá mais responder.
-    </p>
+  </div>
+  <div className="space-y-2">
+    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Data de encerramento</Label>
+    <input
+      type="date"
+      value={dueDate}
+      onChange={(e) => setDueDate(e.target.value)}
+      className="w-full h-14 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:border-brand-green/50 outline-none transition-colors cursor-text"
+    />
+    <p className="text-[10px] text-gray-500">Após essa data, o aluno não poderá mais responder.</p>
+  </div>
+  <div className="space-y-2">
+    <Label className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Horário de encerramento</Label>
+    <input
+      type="time"
+      value={dueTime}
+      onChange={(e) => setDueTime(e.target.value)}
+      className="w-full h-14 bg-white/5 border border-white/10 rounded-xl px-4 text-white focus:border-brand-green/50 outline-none transition-colors cursor-text"
+    />
+    <p className="text-[10px] text-gray-500">Se vazio, o padrão será 23:59 do dia selecionado.</p>
   </div>
 </div>
 

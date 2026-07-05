@@ -8,7 +8,7 @@ import type {
   Notification,
 } from '@/types';
 
-export type TabValue = 'turmas' | 'atividades' | 'chat' | 'notificacoes';
+export type TabValue = 'turmas' | 'atividades' | 'chat' | 'notificacoes' | 'configuracoes';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
@@ -85,7 +85,6 @@ export function useProfessorDashboard() {
   const [showCreateActivity, setShowCreateActivity] = useState(false);
   const [showActivityDetail, setShowActivityDetail] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
-  const [showChatModal, setShowChatModal] = useState(false);
   const [selectedChatAluno, setSelectedChatAluno] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -297,7 +296,7 @@ export function useProfessorDashboard() {
 
     if (aluno) {
       setSelectedChatAluno(aluno);
-      setShowChatModal(true);
+      setActiveTab('chat');
     }
   };
 
@@ -322,8 +321,6 @@ export function useProfessorDashboard() {
 
     selectedActivity,
 
-    showChatModal,
-    setShowChatModal,
 
     selectedChatAluno,
 
