@@ -40,24 +40,24 @@ export function formatarCPF(value: string): string {
 }
 
 // Password criteria description
-const passwordCriteria = "A senha deve conter pelo menos 8 caracteres, incluindo uma letra maiúscula, uma letra minúscula, um número e um caractere especial.";
+const passwordCriteria = "A senha deve ter pelo menos 8 caracteres, com letras maiúsculas, minúsculas, número e símbolo. Ex: Abc@1234";
 
 // Strict password validator regex
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/;
 
 export const loginSchema = z.object({
-  email: z.string().email("Endereço de e-mail inválido."),
-  password: z.string().min(8, "A senha deve ter no mínimo 8 caracteres."),
+  email: z.string().email("E-mail inválido."),
+  password: z.string().min(1, "Informe sua senha."),
 });
 
 export const registerSchema = z.object({
   nome: z.string()
     .min(3, "O nome deve ter no mínimo 3 caracteres.")
     .max(100, "O nome não deve exceder 100 caracteres."),
-  email: z.string().email("Endereço de e-mail inválido."),
+  email: z.string().email("E-mail inválido."),
   senha: z.string().regex(passwordRegex, passwordCriteria),
   documento: z.string().refine((val) => validarCPF(val), {
-    message: "CPF inválido. Insira um CPF real com 11 dígitos.",
+    message: "CPF inválido. Verifique os 11 dígitos informados.",
   }),
 });
 

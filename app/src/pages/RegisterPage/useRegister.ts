@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import type { UserRole } from '@/types';
-import { api } from '@/services/api';
 import { registerSchema, formatarCPF } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rateLimiter';
 
@@ -28,20 +27,29 @@ export function useRegister() {
   const [codigoValido, setCodigoValido] = useState<boolean | null>(null);
   const [validandoCodigo, setValidandoCodigo] = useState(false);
 
+  // Read sessionStorage ONCE on mount, then clear it immediately
+  // This prevents stale values from skipping the professor/student choice
   useEffect(() => {
     const curso = sessionStorage.getItem('cursoAdquirido') as 'ingles' | 'enem' | null;
     const modulo = sessionStorage.getItem('moduloAdquirido');
 
-   if (curso) {
-  if (curso === 'ingles') setInglesAtivado(true);
-  if (curso === 'enem') setEnemAtivado(true);
-  if (modulo) setModuloSelecionado(modulo);
+    // Always clear right away so it won't affect future visits
+    sessionStorage.removeItem('cursoAdquirido');
+    sessionStorage.removeItem('moduloAdquirido');
 
-  setPerfil('aluno');
-  setPreSelected(true);
-  setStep('dados');
-}
+    if (curso) {
+      if (curso === 'ingles') setInglesAtivado(true);
+      if (curso === 'enem') setEnemAtivado(true);
+      if (modulo) setModuloSelecionado(modulo);
+
+      setPerfil('aluno');
+      setPreSelected(true);
+      setStep('dados');
+    }
   }, []);
+
+  // Validate professor code against the local store
+  const { getProfessorByCodigo } = useAuthStore.getState();
 
   useEffect(() => {
     if (perfil !== 'aluno') {
@@ -58,67 +66,59 @@ export function useRegister() {
 
     let ativo = true;
 
-    async function validarCodigo() {
+    function validarCodigo() {
+      setValidandoCodigo(true);
       try {
-        setValidandoCodigo(true);
-
-        await api.validateProfessorCode(codigo);
-
+        const professor = getProfessorByCodigo(codigo);
         if (ativo) {
-          setCodigoValido(true);
+          setCodigoValido(!!professor);
         }
       } catch {
-        if (ativo) {
-          setCodigoValido(false);
-        }
+        if (ativo) setCodigoValido(false);
       } finally {
-        if (ativo) {
-          setValidandoCodigo(false);
-        }
+        if (ativo) setValidandoCodigo(false);
       }
     }
 
     const timer = setTimeout(() => {
-      void validarCodigo();
+      validarCodigo();
     }, 500);
 
     return () => {
       ativo = false;
       clearTimeout(timer);
     };
-  }, [codigoProfessor, perfil]);
+  }, [codigoProfessor, perfil, getProfessorByCodigo]);
 
-const handleIsProfessor = () => {
-  setError('');
+  const handleIsProfessor = () => {
+    setError('');
 
-  sessionStorage.removeItem('cursoAdquirido');
-  sessionStorage.removeItem('moduloAdquirido');
+    sessionStorage.removeItem('cursoAdquirido');
+    sessionStorage.removeItem('moduloAdquirido');
 
-  setInglesAtivado(false);
-  setEnemAtivado(false);
-  setModuloSelecionado('');
-  setCodigoProfessor('');
-  setCodigoValido(null);
+    setInglesAtivado(false);
+    setEnemAtivado(false);
+    setModuloSelecionado('');
+    setCodigoProfessor('');
+    setCodigoValido(null);
 
-  setPerfil('professor');
-  setPreSelected(false);
-  setStep('dados');
-};
+    setPerfil('professor');
+    setPreSelected(false);
+    setStep('dados');
+  };
 
   const handleCourseNext = () => {
     setError('');
 
+    if (!inglesAtivado && !enemAtivado) {
+      setError('Selecione ao menos um curso para continuar.');
+      return;
+    }
 
-if (!inglesAtivado && !enemAtivado) {
-  setError('Selecione ao menos um curso para continuar.');
-  return;
-}
-
-if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
-  setError('Selecione uma modalidade para continuar.');
-  return;
-}
-
+    if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
+      setError('Selecione uma modalidade para continuar.');
+      return;
+    }
 
     setPerfil('aluno');
     setStep('dados');
@@ -137,7 +137,7 @@ if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check rate limit
+    // Rate limit check
     const limit = checkRateLimit('register', 5, 60000);
     if (!limit.allowed) {
       setError(`Muitas tentativas de cadastro. Tente novamente em ${limit.retryAfter} segundos.`);
@@ -164,42 +164,41 @@ if ((inglesAtivado || enemAtivado) && !moduloSelecionado) {
         return;
       }
 
+      if (perfil === 'aluno' && codigoValido === false) {
+        setError('Código do professor inválido.');
+        return;
+      }
+
       setIsLoading(true);
 
-      const result = await api.register({
+      // Use local authStore — works without a backend
+      const { register } = useAuthStore.getState();
+
+      const result = register({
         nome: nome.trim(),
         email: email.trim(),
-        password: senha,
+        senha,
         documento: documento.trim(),
-        role: perfil === 'professor' ? 'professor' : 'aluno',
+        role: perfil,
         codigoProfessor:
           perfil === 'aluno'
             ? codigoProfessor.trim().toUpperCase()
             : undefined,
-        cursoAdquirido:
-          perfil === 'aluno'
-            ? cursoAdquirido
-            : undefined,
-        moduloAdquirido:
-          perfil === 'aluno' 
-            ? moduloSelecionado
-            : undefined,
+        cursoAdquirido: perfil === 'aluno' ? cursoAdquirido : undefined,
+        moduloAdquirido: perfil === 'aluno' ? moduloSelecionado : undefined,
       });
 
-      sessionStorage.removeItem('cursoAdquirido');
-      sessionStorage.removeItem('moduloAdquirido');
-
-      useAuthStore.setState({
-        currentUser: result.user,
-        isAuthenticated: true,
-      });
+      if (!result.success) {
+        setError(result.message ?? 'Erro ao criar conta.');
+        return;
+      }
 
       setSuccess(true);
-    } catch (error) {
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
-          : 'Erro ao criar conta',
+        err instanceof Error
+          ? err.message
+          : 'Erro inesperado ao criar conta.',
       );
     } finally {
       setIsLoading(false);
