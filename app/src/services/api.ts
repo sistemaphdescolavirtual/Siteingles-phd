@@ -1,5 +1,11 @@
-import type { Activity, Attachment, User, UserRole, UserStatus } from '@/types';
-
+import type {
+  Activity,
+  Attachment,
+  ChatMessage,
+  User,
+  UserRole,
+  UserStatus,
+} from '@/types';
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
 
@@ -108,6 +114,21 @@ interface SubmitActivityCorrectionPayload {
   correctionFeedback?: string;
 }
 
+interface ApiChatMessage {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+}
+
+interface SendChatMessagePayload {
+  senderId: string;
+  receiverId: string;
+  message: string;
+}
+
 function mapApiUser(apiUser: ApiUser): User {
   return {
     id: apiUser.id,
@@ -126,6 +147,19 @@ function mapApiUser(apiUser: ApiUser): User {
         apiUser.created_at ??
         new Date().toISOString(),
     ),
+  };
+}
+
+function mapApiChatMessage(
+  apiMessage: ApiChatMessage,
+): ChatMessage {
+  return {
+    id: apiMessage.id,
+    senderId: apiMessage.senderId,
+    receiverId: apiMessage.receiverId,
+    message: apiMessage.message,
+    createdAt: new Date(apiMessage.createdAt),
+    read: apiMessage.read,
   };
 }
 
@@ -297,6 +331,43 @@ export const api = {
       message: response.message,
       activity: mapApiActivity(response.activity),
     };
+  },
+
+    getChatConversation: async (
+    userId: string,
+    otherUserId: string,
+  ) => {
+    const response = await request<ApiChatMessage[]>(
+      `/chat/conversation/${encodeURIComponent(userId)}/${encodeURIComponent(otherUserId)}`,
+    );
+
+    return response.map(mapApiChatMessage);
+  },
+
+  sendChatMessage: async (
+    payload: SendChatMessagePayload,
+  ) => {
+    const response = await request<{
+      message: string;
+      chatMessage: ApiChatMessage;
+    }>('/chat/messages', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    return mapApiChatMessage(response.chatMessage);
+  },
+
+  markChatConversationAsRead: async (
+    userId: string,
+    otherUserId: string,
+  ) => {
+    return request<{ message: string }>(
+      `/chat/conversation/${encodeURIComponent(userId)}/${encodeURIComponent(otherUserId)}/read`,
+      {
+        method: 'PATCH',
+      },
+    );
   },
 };
 

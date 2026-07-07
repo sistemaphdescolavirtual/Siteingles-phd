@@ -9,7 +9,7 @@ import modulesRouter from './routes/modules.routes.js';
 import authRouter from './routes/auth.routes.js';
 import professorRouter from './routes/professor.routes.js';
 import activitiesRouter from './routes/activities.routes.js';
-
+import chatRouter from './routes/chat.routes.js';
 const app = express();
 
 const port = Number(process.env.PORT) || 3001;
@@ -59,6 +59,7 @@ app.use('/api/modules', modulesRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/professor', professorRouter);
 app.use('/api/activities', activitiesRouter);
+app.use('/api/chat', chatRouter);
 
 app.use((_req, res) => {
   return res.status(404).json({

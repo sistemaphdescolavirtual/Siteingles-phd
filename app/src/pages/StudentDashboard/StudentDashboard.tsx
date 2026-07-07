@@ -15,6 +15,7 @@ import { SettingsModal } from '@/components/shared/SettingsModal';
 import { useStudentDashboard } from './useStudentDashboard';
 import type { Activity } from '@/types';
 import logoPhd from '@/assets/logo_phd.png';
+import { ChatPanel } from '@/components/shared/ChatPanel';
 
 interface StudentDashboardProps { onLogout: () => void; }
 
@@ -307,38 +308,27 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
           {/* CHAT INLINE */}
           <TabsContent value="chat" className="space-y-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              {professor ? (
-                <div className="glass-panel rounded-[2.5rem] border border-white/5 overflow-hidden flex flex-col" style={{ height: '550px' }}>
-                  <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center gap-4 shrink-0">
-                    <Avatar nome={professor.nome} size="md" />
-                    <div>
-                      <h3 className="font-bold text-lg">{professor.nome}</h3>
-                      <p className="text-[10px] text-brand-green font-black uppercase tracking-widest">Seu Instrutor</p>
-                    </div>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center justify-center opacity-20">
-                    <MessageSquare className="w-12 h-12 mb-4" />
-                    <p className="text-sm font-bold uppercase tracking-widest">Inicie uma conversa</p>
-                  </div>
-                  <div className="p-4 border-t border-white/5 shrink-0">
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        placeholder="Digite sua mensagem..."
-                        className="flex-1 h-12 bg-white/5 border border-white/10 rounded-2xl px-4 text-white placeholder-gray-600 outline-none focus:border-brand-green/50 cursor-text"
-                      />
-                      <Button className="w-12 h-12 bg-brand-green hover:bg-emerald-600 text-black rounded-2xl cursor-pointer shrink-0">
-                        <MessageSquare className="w-5 h-5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="glass-panel rounded-[2.5rem] p-20 border border-white/5 text-center opacity-30">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4" />
-                  <p className="font-bold uppercase tracking-widest text-sm">Nenhum professor vinculado</p>
-                </div>
-              )}
+             {professor && currentUser?.id ? (
+  <div
+    className="glass-panel rounded-[2.5rem] border border-white/5 overflow-hidden flex flex-col"
+    style={{ height: '550px' }}
+  >
+    <ChatPanel
+      currentUserId={currentUser.id}
+      recipient={professor}
+      headerLabel="Seu Instrutor"
+      emptyMessage="Inicie uma conversa"
+    />
+  </div>
+) : (
+  <div className="glass-panel rounded-[2.5rem] p-20 border border-white/5 text-center opacity-30">
+    <MessageSquare className="w-16 h-16 mx-auto mb-4" />
+
+    <p className="font-bold uppercase tracking-widest text-sm">
+      Nenhum professor vinculado
+    </p>
+  </div>
+)}
             </motion.div>
           </TabsContent>
 

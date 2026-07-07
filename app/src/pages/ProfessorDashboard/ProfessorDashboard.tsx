@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/shared/Avatar';
 import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge';
+import { ChatPanel } from '@/components/shared/ChatPanel';
 import { NotificationItem } from './components/NotificationItem';
 import { ResolvedNotificationItem } from './components/ResolvedNotificationItem';
 import { ProfessorCodeCard } from './components/ProfessorCodeCard';
@@ -14,6 +15,7 @@ import { ActivityDetailModal } from './components/ActivityDetailModal';
 import { useProfessorDashboard } from './useProfessorDashboard';
 import type { User } from '@/types';
 import logoPhd from '@/assets/logo_phd.png';
+
 
 interface ProfessorDashboardProps { onLogout: () => void; }
 
@@ -335,36 +337,22 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
                   </div>
                   {/* Painel de chat */}
                   <div className="md:col-span-2 glass-panel rounded-3xl border border-white/10 flex flex-col overflow-hidden">
-                    {selectedChatAluno ? (
-                      <>
-                        <div className="p-5 border-b border-white/5 flex items-center gap-4 shrink-0">
-                          <Avatar nome={selectedChatAluno.nome} size="sm" />
-                          <div>
-                            <h3 className="font-bold">{selectedChatAluno.nome}</h3>
-                            <p className="text-[10px] text-brand-green uppercase tracking-widest font-bold">Online</p>
-                          </div>
-                        </div>
-                        <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center justify-center opacity-30">
-                          <MessageSquare className="w-12 h-12 mb-4" />
-                          <p className="text-sm font-bold uppercase tracking-widest">Inicie a conversa</p>
-                        </div>
-                        <div className="p-4 border-t border-white/5 shrink-0">
-                          <div className="flex gap-3">
-                            <input
-                              type="text"
-                              placeholder="Escreva sua mensagem..."
-                              className="flex-1 h-12 bg-white/5 border border-white/10 rounded-2xl px-4 text-white placeholder-gray-600 outline-none focus:border-brand-green/50 cursor-text"
-                            />
-                            <Button className="w-12 h-12 bg-brand-green hover:bg-emerald-600 text-black rounded-2xl cursor-pointer shrink-0"><MessageSquare className="w-5 h-5" /></Button>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center opacity-20">
-                        <MessageSquare className="w-16 h-16 mb-4" />
-                        <p className="font-bold uppercase tracking-widest text-sm">Selecione uma conversa</p>
-                      </div>
-                    )}
+                 {selectedChatAluno && currentUser?.id ? (
+  <ChatPanel
+    currentUserId={currentUser.id}
+    recipient={selectedChatAluno}
+    headerLabel="Aluno vinculado"
+    emptyMessage="Inicie a conversa com seu aluno"
+  />
+) : (
+  <div className="flex-1 flex flex-col items-center justify-center opacity-20">
+    <MessageSquare className="w-16 h-16 mb-4" />
+
+    <p className="font-bold uppercase tracking-widest text-sm">
+      Selecione uma conversa
+    </p>
+  </div>
+)}
                   </div>
                 </div>
               ) : (
