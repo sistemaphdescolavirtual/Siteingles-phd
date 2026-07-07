@@ -1,6 +1,6 @@
 // Tipos da Plataforma de Ensino
 
-export type UserRole = 'professor' | 'aluno' | 'admin' | null;
+export type UserRole = 'professor' | 'aluno' | 'gestor' | 'admin' | null;
 
 export type UserStatus = 'pendente' | 'aprovado' | 'rejeitado';
 

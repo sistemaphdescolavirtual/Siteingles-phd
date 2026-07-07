@@ -335,7 +335,7 @@ router.post('/:activityId/response', async (req, res) => {
 
     const { data: activity, error: activityError } = await supabaseAdmin
       .from('activities')
-      .select('id, professor_id, aluno_id, titulo, due_at')
+      .select('id, professor_id, aluno_id, titulo, due_at, publish_at, correction_status')
       .eq('id', activityId)
       .maybeSingle();
 
@@ -359,45 +359,73 @@ router.post('/:activityId/response', async (req, res) => {
         error: 'Esta atividade não pertence a este aluno.',
       });
     }
-    if (activity.due_at && new Date(activity.due_at) < new Date()) {
-             return res.status(400).json({
-       error: 'O prazo para responder esta atividade já foi encerrado.',
+
+    const now = new Date();
+    const publishAt = activity.publish_at
+      ? new Date(activity.publish_at)
+      : null;
+    const dueAt = activity.due_at ? new Date(activity.due_at) : null;
+    const canResubmit = ['incorreta', 'devolvida'].includes(
+      activity.correction_status,
+    );
+
+    if (publishAt && publishAt > now) {
+      return res.status(400).json({
+        error: 'Esta atividade ainda não foi publicada.',
       });
     }
 
-   console.log('Resposta recebida:', {
-  activityId,
-  alunoId,
-  tipo,
-  conteudo,
-});
+    if (activity.correction_status === 'correta') {
+      return res.status(409).json({
+        error: 'Esta atividade já foi marcada como correta.',
+      });
+    }
 
-const { data: savedResponse, error: responseError } = await supabaseAdmin
-  .from('activity_responses')
-  .upsert(
-    {
-      activity_id: activityId,
+    if (activity.correction_status === 'em_analise') {
+      return res.status(409).json({
+        error: 'A resposta desta atividade já está em análise.',
+      });
+    }
+
+    if (!canResubmit && dueAt && dueAt < now) {
+      return res.status(400).json({
+        error: 'O prazo para responder esta atividade já foi encerrado.',
+      });
+    }
+
+    console.log('Resposta recebida:', {
+      activityId,
+      alunoId,
       tipo,
       conteudo,
-      enviado_em: new Date().toISOString(),
-    },
-    {
-      onConflict: 'activity_id',
-    },
-  )
-  .select('activity_id, tipo, conteudo, enviado_em')
-  .single();
+    });
 
-if (responseError) {
-  console.error('Erro ao salvar resposta:', responseError);
+    const { data: savedResponse, error: responseError } = await supabaseAdmin
+      .from('activity_responses')
+      .upsert(
+        {
+          activity_id: activityId,
+          tipo,
+          conteudo,
+          enviado_em: new Date().toISOString(),
+        },
+        {
+          onConflict: 'activity_id',
+        },
+      )
+      .select('activity_id, tipo, conteudo, enviado_em')
+      .single();
 
-  return res.status(500).json({
-    error: 'Não foi possível salvar a resposta.',
-    details: responseError.message,
-  });
-}
+    if (responseError) {
+      console.error('Erro ao salvar resposta:', responseError);
 
-console.log('Resposta salva no banco:', savedResponse);
+      return res.status(500).json({
+        error: 'Não foi possível salvar a resposta.',
+        details: responseError.message,
+      });
+    }
+
+    console.log('Resposta salva no banco:', savedResponse);
 
     const { error: updateActivityError } = await supabaseAdmin
       .from('activities')
@@ -536,16 +564,24 @@ router.patch('/:activityId/correction', async (req, res) => {
       });
     }
 
+    const notificationTitle =
+      correctionStatus === 'devolvida'
+        ? 'Atividade devolvida para revisão'
+        : correctionStatus === 'incorreta'
+          ? 'Atividade incorreta — reenvio liberado'
+          : 'Atividade corrigida';
+
+    const notificationMessage =
+      correctionStatus === 'devolvida'
+        ? `Sua atividade "${activity.titulo}" foi devolvida para revisão.`
+        : correctionStatus === 'incorreta'
+          ? `Sua atividade "${activity.titulo}" foi marcada como incorreta. Corrija e reenvie.`
+          : `Sua atividade "${activity.titulo}" foi corrigida pelo professor.`;
+
     await supabaseAdmin.from('notifications').insert({
       user_id: activity.aluno_id,
-      title:
-        correctionStatus === 'devolvida'
-          ? 'Atividade devolvida para revisão'
-          : 'Atividade corrigida',
-      message:
-        correctionStatus === 'devolvida'
-          ? `Sua atividade "${activity.titulo}" foi devolvida para revisão.`
-          : `Sua atividade "${activity.titulo}" foi corrigida pelo professor.`,
+      title: notificationTitle,
+      message: notificationMessage,
       type: 'atividade',
       read: false,
       resolved: false,

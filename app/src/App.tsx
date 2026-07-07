@@ -34,7 +34,7 @@ function App() {
         setCurrentPage('professor-dashboard');
       } else if (currentUser.role === 'aluno') {
         setCurrentPage('student-dashboard');
-      } else if (currentUser.role === 'admin') {
+      } else if (currentUser.role === 'gestor' || currentUser.role === 'admin') {
         setCurrentPage('adm-dashboard');
       }
     }

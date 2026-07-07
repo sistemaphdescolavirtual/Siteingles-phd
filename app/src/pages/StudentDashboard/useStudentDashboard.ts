@@ -75,8 +75,16 @@ export function useStudentDashboard() {
     ? atividadesReais.filter((atividade) => atividade.curso === cursoAdquirido)
     : atividadesReais;
 
+  const actionableStatuses: Activity['correctionStatus'][] = [
+    'pendente',
+    'incorreta',
+    'devolvida',
+  ];
+
   const pendingNotifications: any[] = atividades
-    .filter((atividade) => atividade.correctionStatus === 'pendente')
+    .filter((atividade) =>
+      actionableStatuses.includes(atividade.correctionStatus),
+    )
     .map((atividade) => ({
       id: `atividade-${atividade.id}`,
       userId: currentUser?.id ?? '',
@@ -92,7 +100,10 @@ export function useStudentDashboard() {
     }));
 
   const resolvedNotifications: any[] = atividades
-    .filter((atividade) => atividade.correctionStatus !== 'pendente')
+    .filter(
+      (atividade) =>
+        !actionableStatuses.includes(atividade.correctionStatus),
+    )
     .map((atividade) => ({
       id: `atividade-resolvida-${atividade.id}`,
       userId: currentUser?.id ?? '',
@@ -135,8 +146,8 @@ export function useStudentDashboard() {
     (atividade) => atividade.correctionStatus === 'correta',
   ).length;
 
-  const pendentes = atividades.filter(
-    (atividade) => atividade.correctionStatus === 'pendente',
+  const pendentes = atividades.filter((atividade) =>
+    actionableStatuses.includes(atividade.correctionStatus),
   ).length;
 
   const emAnalise = atividades.filter(

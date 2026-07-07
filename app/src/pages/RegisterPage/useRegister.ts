@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { api } from '@/services/api';
 import type { UserRole } from '@/types';
 import { registerSchema, formatarCPF } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rateLimiter';
@@ -27,13 +28,13 @@ export function useRegister() {
   const [codigoValido, setCodigoValido] = useState<boolean | null>(null);
   const [validandoCodigo, setValidandoCodigo] = useState(false);
 
-  // Read sessionStorage ONCE on mount, then clear it immediately
-  // This prevents stale values from skipping the professor/student choice
   useEffect(() => {
-    const curso = sessionStorage.getItem('cursoAdquirido') as 'ingles' | 'enem' | null;
+    const curso = sessionStorage.getItem('cursoAdquirido') as
+      | 'ingles'
+      | 'enem'
+      | null;
     const modulo = sessionStorage.getItem('moduloAdquirido');
 
-    // Always clear right away so it won't affect future visits
     sessionStorage.removeItem('cursoAdquirido');
     sessionStorage.removeItem('moduloAdquirido');
 
@@ -48,12 +49,10 @@ export function useRegister() {
     }
   }, []);
 
-  // Validate professor code against the local store
-  const { getProfessorByCodigo } = useAuthStore.getState();
-
   useEffect(() => {
     if (perfil !== 'aluno') {
       setCodigoValido(null);
+      setValidandoCodigo(false);
       return;
     }
 
@@ -61,34 +60,37 @@ export function useRegister() {
 
     if (codigo.length < 10) {
       setCodigoValido(null);
+      setValidandoCodigo(false);
       return;
     }
 
     let ativo = true;
 
-    function validarCodigo() {
+    const timer = window.setTimeout(async () => {
       setValidandoCodigo(true);
+
       try {
-        const professor = getProfessorByCodigo(codigo);
+        const response = await api.validateProfessorCode(codigo);
+
         if (ativo) {
-          setCodigoValido(!!professor);
+          setCodigoValido(response.valid);
         }
       } catch {
-        if (ativo) setCodigoValido(false);
+        if (ativo) {
+          setCodigoValido(false);
+        }
       } finally {
-        if (ativo) setValidandoCodigo(false);
+        if (ativo) {
+          setValidandoCodigo(false);
+        }
       }
-    }
-
-    const timer = setTimeout(() => {
-      validarCodigo();
     }, 500);
 
     return () => {
       ativo = false;
-      clearTimeout(timer);
+      window.clearTimeout(timer);
     };
-  }, [codigoProfessor, perfil, getProfessorByCodigo]);
+  }, [codigoProfessor, perfil]);
 
   const handleIsProfessor = () => {
     setError('');
@@ -137,23 +139,29 @@ export function useRegister() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Rate limit check
     const limit = checkRateLimit('register', 5, 60000);
     if (!limit.allowed) {
-      setError(`Muitas tentativas de cadastro. Tente novamente em ${limit.retryAfter} segundos.`);
+      setError(
+        `Muitas tentativas de cadastro. Tente novamente em ${limit.retryAfter} segundos.`,
+      );
       return;
     }
 
     try {
       setError('');
 
-      if (!perfil) {
+      if (perfil !== 'professor' && perfil !== 'aluno') {
         setError('Selecione um perfil (Professor ou Aluno).');
         return;
       }
 
-      // Validate with Zod
-      const validation = registerSchema.safeParse({ nome, email, senha, documento });
+      const validation = registerSchema.safeParse({
+        nome,
+        email,
+        senha,
+        documento,
+      });
+
       if (!validation.success) {
         setError(validation.error.issues[0].message);
         return;
@@ -164,20 +172,17 @@ export function useRegister() {
         return;
       }
 
-      if (perfil === 'aluno' && codigoValido === false) {
+      if (perfil === 'aluno' && codigoValido !== true) {
         setError('Código do professor inválido.');
         return;
       }
 
       setIsLoading(true);
 
-      // Use local authStore — works without a backend
-      const { register } = useAuthStore.getState();
-
-      const result = register({
+      await api.register({
         nome: nome.trim(),
         email: email.trim(),
-        senha,
+        password: senha,
         documento: documento.trim(),
         role: perfil,
         codigoProfessor:
@@ -185,13 +190,24 @@ export function useRegister() {
             ? codigoProfessor.trim().toUpperCase()
             : undefined,
         cursoAdquirido: perfil === 'aluno' ? cursoAdquirido : undefined,
-        moduloAdquirido: perfil === 'aluno' ? moduloSelecionado : undefined,
+        moduloAdquirido:
+          perfil === 'aluno' ? moduloSelecionado : undefined,
       });
 
-      if (!result.success) {
-        setError(result.message ?? 'Erro ao criar conta.');
-        return;
-      }
+      const loginResult = await api.login({
+        email: email.trim(),
+        password: senha,
+      });
+
+      localStorage.setItem(
+        'authSession',
+        JSON.stringify(loginResult.session),
+      );
+
+      useAuthStore.setState({
+        currentUser: loginResult.user,
+        isAuthenticated: true,
+      });
 
       setSuccess(true);
     } catch (err) {
