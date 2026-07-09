@@ -245,10 +245,44 @@ router.post('/register', async (req, res) => {
 
     const publicUser = await getPublicUserById(authUser.id);
 
-    return res.status(201).json({
-      message: 'Usuário cadastrado com sucesso.',
-      user: publicUser,
-    });
+if (role === 'aluno' && professor) {
+  const { error: notificationError } =
+    await supabaseAdmin
+      .from('notifications')
+      .insert({
+        user_id: professor.id,
+        title: 'Novo aluno aguardando aprovação',
+        message: `${publicUser.nome} solicitou acesso à plataforma${
+          publicUser.curso_adquirido
+            ? ` para o curso de ${
+                publicUser.curso_adquirido === 'ingles'
+                  ? 'Inglês'
+                  : 'ENEM'
+              }`
+            : ''
+        }.`,
+        type: 'autorizacao',
+        read: false,
+        resolved: false,
+        data: {
+          alunoId: publicUser.id,
+          curso: publicUser.curso_adquirido,
+        },
+      });
+
+  if (notificationError) {
+    console.error(
+      'Aluno cadastrado, mas houve erro ao criar notificação:',
+      notificationError,
+    );
+  }
+}
+
+return res.status(201).json({
+  message: 'Usuário cadastrado com sucesso.',
+  user: publicUser,
+});
+
   } catch (error) {
     console.error('Erro inesperado no cadastro:', error);
 

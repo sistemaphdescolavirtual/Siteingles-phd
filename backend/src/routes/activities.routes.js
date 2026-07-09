@@ -366,6 +366,167 @@ if (dueAt && dueAt <= publishAt) {
   }
 });
 
+router.get(
+  '/:activityId/attachments/:attachmentId/access',
+  async (req, res) => {
+    try {
+      const activityId = String(
+        req.params.activityId ?? '',
+      ).trim();
+
+      const attachmentId = String(
+        req.params.attachmentId ?? '',
+      ).trim();
+
+      const userId = String(
+        req.query.userId ?? '',
+      ).trim();
+
+      if (!activityId || !attachmentId || !userId) {
+        return res.status(400).json({
+          error:
+            'Atividade, anexo e usuário são obrigatórios.',
+        });
+      }
+
+      const {
+        data: attachment,
+        error: attachmentError,
+      } = await supabaseAdmin
+        .from('activity_attachments')
+        .select(
+          'id, activity_id, nome, tipo, url',
+        )
+        .eq('id', attachmentId)
+        .eq('activity_id', activityId)
+        .maybeSingle();
+
+      if (attachmentError) {
+        console.error(
+          'Erro ao buscar anexo:',
+          attachmentError,
+        );
+
+        return res.status(500).json({
+          error: 'Erro ao buscar anexo.',
+          details: attachmentError.message,
+        });
+      }
+
+      if (!attachment) {
+        return res.status(404).json({
+          error: 'Anexo não encontrado.',
+        });
+      }
+
+      if (attachment.tipo === 'link') {
+        return res.status(200).json({
+          attachmentId: attachment.id,
+          fileName: attachment.nome,
+          tipo: attachment.tipo,
+          viewUrl: attachment.url,
+          downloadUrl: null,
+          expiresIn: null,
+        });
+      }
+
+      const {
+        data: activity,
+        error: activityError,
+      } = await supabaseAdmin
+        .from('activities')
+        .select('id, professor_id, aluno_id')
+        .eq('id', activityId)
+        .maybeSingle();
+
+      if (activityError) {
+        console.error(
+          'Erro ao validar atividade:',
+          activityError,
+        );
+
+        return res.status(500).json({
+          error: 'Erro ao validar atividade.',
+          details: activityError.message,
+        });
+      }
+
+      if (!activity) {
+        return res.status(404).json({
+          error: 'Atividade não encontrada.',
+        });
+      }
+
+      const canAccess =
+        activity.aluno_id === userId ||
+        activity.professor_id === userId;
+
+      if (!canAccess) {
+        return res.status(403).json({
+          error:
+            'Você não possui acesso a este arquivo.',
+        });
+      }
+
+      const expiresIn = 5 * 60;
+
+      const {
+        data: signedData,
+        error: signedUrlError,
+      } = await supabaseAdmin.storage
+        .from(ACTIVITY_FILES_BUCKET)
+        .createSignedUrl(
+          attachment.url,
+          expiresIn,
+        );
+
+      if (signedUrlError || !signedData?.signedUrl) {
+        console.error(
+          'Erro ao gerar acesso temporário:',
+          signedUrlError,
+        );
+
+        return res.status(500).json({
+          error:
+            'Não foi possível liberar o arquivo.',
+          details:
+            signedUrlError?.message ??
+            'URL assinada não foi gerada.',
+        });
+      }
+
+      const downloadUrl = new URL(
+        signedData.signedUrl,
+      );
+
+      downloadUrl.searchParams.set(
+        'download',
+        attachment.nome,
+      );
+
+      return res.status(200).json({
+        attachmentId: attachment.id,
+        fileName: attachment.nome,
+        tipo: attachment.tipo,
+        viewUrl: signedData.signedUrl,
+        downloadUrl: downloadUrl.toString(),
+        expiresIn,
+      });
+    } catch (error) {
+      console.error(
+        'Erro inesperado ao liberar anexo:',
+        error,
+      );
+
+      return res.status(500).json({
+        error:
+          'Erro interno ao liberar o arquivo.',
+        details: error.message,
+      });
+    }
+  },
+);
+
 router.post('/:activityId/attachments/upload-url', async (req, res) => {
   try {
     const activityId = String(req.params.activityId ?? '').trim();

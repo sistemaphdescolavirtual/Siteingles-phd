@@ -95,18 +95,77 @@ router.patch('/:professorId/students/:studentId/status', async (req, res) => {
     }
 
     if (!data) {
-      return res.status(404).json({
-        error: 'Aluno não encontrado para este professor.',
-      });
-    }
+  return res.status(404).json({
+    error: 'Aluno não encontrado para este professor.',
+  });
+}
 
-    return res.status(200).json({
-      message:
-        status === 'aprovado'
-          ? 'Aluno aprovado com sucesso.'
-          : 'Aluno rejeitado com sucesso.',
-      user: data,
+const { error: resolveNotificationError } =
+  await supabaseAdmin
+    .from('notifications')
+    .update({
+      read: true,
+      resolved: true,
+      resolution: status,
+    })
+    .eq('user_id', professorId)
+    .eq('type', 'autorizacao')
+    .contains('data', {
+      alunoId: studentId,
+    })
+    .eq('resolved', false);
+
+if (resolveNotificationError) {
+  console.error(
+    'Aluno atualizado, mas houve erro ao resolver notificação:',
+    resolveNotificationError,
+  );
+}
+
+const studentNotification =
+  status === 'aprovado'
+    ? {
+        title: 'Aprovação concedida!',
+        message:
+          'Você foi aprovado e agora tem acesso completo à plataforma.',
+      }
+    : {
+        title: 'Solicitação rejeitada',
+        message:
+          'Sua solicitação foi rejeitada. Entre em contato com o professor para mais informações.',
+      };
+
+const { error: studentNotificationError } =
+  await supabaseAdmin
+    .from('notifications')
+    .insert({
+      user_id: studentId,
+      title: studentNotification.title,
+      message: studentNotification.message,
+      type: 'sistema',
+      read: false,
+      resolved: false,
+      data: {
+        professorId,
+        status,
+      },
     });
+
+if (studentNotificationError) {
+  console.error(
+    'Aluno atualizado, mas houve erro ao notificá-lo:',
+    studentNotificationError,
+  );
+}
+
+return res.status(200).json({
+  message:
+    status === 'aprovado'
+      ? 'Aluno aprovado com sucesso.'
+      : 'Aluno rejeitado com sucesso.',
+  user: data,
+});
+
   } catch (error) {
     console.error('Erro inesperado ao atualizar aluno:', error);
 
