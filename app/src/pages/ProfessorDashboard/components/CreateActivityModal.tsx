@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Paperclip, Check, X } from 'lucide-react';
 import { api } from '@/services/api';
 import type { Attachment, User } from '@/types';
+import { uploadActivityFileToStorage } from '@/lib/supabaseStorage';
 
 interface CreateActivityModalProps {
   isOpen: boolean;
@@ -22,6 +23,24 @@ interface CreateActivityModalProps {
   curso: string | null;
   professorId?: string;
   onCreated?: () => void;
+}
+
+const MAX_ACTIVITY_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_ACTIVITY_FILES = 3;
+
+const ALLOWED_ACTIVITY_FILE_EXTENSIONS = [
+  '.pdf',
+  '.txt',
+  '.xls',
+  '.xlsx',
+];
+
+function isAllowedActivityFile(file: File): boolean {
+  const fileName = file.name.toLowerCase();
+
+  return ALLOWED_ACTIVITY_FILE_EXTENSIONS.some(
+    (extension) => fileName.endsWith(extension),
+  );
 }
 
 function normalizeCurso(curso?: string | null): 'ingles' | 'enem' {
@@ -44,7 +63,8 @@ export function CreateActivityModal({
 }: CreateActivityModalProps) {
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [anexos, setAnexos] = useState<Attachment[]>([]);
+const [anexos, setAnexos] = useState<Attachment[]>([]);
+const [files, setFiles] = useState<File[]>([]);  
 const [linkInput, setLinkInput] = useState('');
 const [publishDate, setPublishDate] = useState('');
 const [publishTime, setPublishTime] = useState('');
@@ -54,29 +74,61 @@ const [isSubmitting, setIsSubmitting] = useState(false);
 const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleFileChange = (
+  e: React.ChangeEvent<HTMLInputElement>,
+) => {
+  const selectedFiles = Array.from(
+    e.target.files ?? [],
+  );
 
-    setAnexos((prev) => [
-      ...prev,
-      ...files.map((file) => ({
-        id: `anexo-${Date.now()}-${Math.random()}`,
-        nome: file.name,
-        tipo: (
-          file.name.endsWith('.pdf')
-            ? 'pdf'
-            : file.name.endsWith('.xls') || file.name.endsWith('.xlsx')
-              ? 'xls'
-              : 'txt'
-        ) as Attachment['tipo'],
-        url: URL.createObjectURL(file),
-      })),
-    ]);
+  const validFiles = selectedFiles.filter((file) => {
+    if (!isAllowedActivityFile(file)) {
+      alert(
+        `"${file.name}" não é permitido. Use PDF, TXT, XLS ou XLSX.`,
+      );
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      return false;
     }
-  };
+
+    if (file.size > MAX_ACTIVITY_FILE_SIZE) {
+      alert(
+        `"${file.name}" ultrapassa o limite de 5 MB.`,
+      );
+
+      return false;
+    }
+
+    return true;
+  });
+
+  setFiles((currentFiles) => {
+    const availableSlots =
+      MAX_ACTIVITY_FILES - currentFiles.length;
+
+    if (availableSlots <= 0) {
+      alert(
+        'Cada atividade pode ter no máximo 3 arquivos.',
+      );
+
+      return currentFiles;
+    }
+
+    if (validFiles.length > availableSlots) {
+      alert(
+        `Você pode adicionar somente mais ${availableSlots} arquivo(s).`,
+      );
+    }
+
+    return [
+      ...currentFiles,
+      ...validFiles.slice(0, availableSlots),
+    ];
+  });
+
+  if (fileInputRef.current) {
+    fileInputRef.current.value = '';
+  }
+};
 
   const handleAddLink = () => {
     if (!linkInput.trim()) {
@@ -107,17 +159,23 @@ const [success, setSuccess] = useState(false);
     try {
       setIsSubmitting(true);
 
-     await api.createActivity({
+   const { activity } = await api.createActivity({
   professorId,
   alunoId: aluno.id,
-  curso: normalizeCurso(aluno.cursoAdquirido || curso),
+  curso: normalizeCurso(
+    aluno.cursoAdquirido || curso,
+  ),
   titulo,
   descricao,
   publishAt: publishDate
-    ? new Date(`${publishDate}T${publishTime || '00:00'}`).toISOString()
+    ? new Date(
+        `${publishDate}T${publishTime || '00:00'}`,
+      ).toISOString()
     : undefined,
   dueAt: dueDate
-    ? new Date(`${dueDate}T${dueTime || '23:59'}`).toISOString()
+    ? new Date(
+        `${dueDate}T${dueTime || '23:59'}`,
+      ).toISOString()
     : undefined,
   anexos: anexos.map((anexo) => ({
     nome: anexo.nome,
@@ -125,6 +183,34 @@ const [success, setSuccess] = useState(false);
     url: anexo.url,
   })),
 });
+
+for (const file of files) {
+  const uploadData =
+    await api.prepareActivityAttachmentUpload(
+      activity.id,
+      {
+        professorId,
+        fileName: file.name,
+        fileSize: file.size,
+      },
+    );
+
+  await uploadActivityFileToStorage({
+    path: uploadData.path,
+    token: uploadData.token,
+    file,
+    contentType: uploadData.contentType,
+  });
+
+  await api.confirmActivityAttachment(
+    activity.id,
+    {
+      professorId,
+      path: uploadData.path,
+      fileName: file.name,
+    },
+  );
+}
       setSuccess(true);
 
       setTimeout(() => {
@@ -135,9 +221,10 @@ const [success, setSuccess] = useState(false);
         setPublishTime('');
         setDueDate('');
         setDueTime('');
-        setAnexos([]);
-        onCreated?.();
-        onClose();
+      setAnexos([]);
+      setFiles([]);
+      onCreated?.();
+      onClose();
         }, 1500);
     } catch (error) {
       alert(
@@ -319,32 +406,62 @@ const [success, setSuccess] = useState(false);
                   </div>
                 </div>
 
-                {anexos.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {anexos.map((anexo) => (
-                      <div
-                        key={anexo.id}
-                        className="flex items-center gap-2 px-3 py-2 bg-brand-green/10 border border-brand-green/20 rounded-xl"
-                      >
-                        <span className="text-xs font-bold text-brand-neon truncate max-w-[150px]">
-                          {anexo.nome}
-                        </span>
+                
+              {(files.length > 0 || anexos.length > 0) && (
+  <div className="flex flex-wrap gap-2 pt-2">
+    {files.map((file, index) => (
+      <div
+        key={`${file.name}-${file.size}-${file.lastModified}`}
+        className="flex items-center gap-2 px-3 py-2 bg-brand-green/10 border border-brand-green/20 rounded-xl"
+      >
+        <span className="text-xs font-bold text-brand-neon truncate max-w-[150px]">
+          {file.name}
+        </span>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAnexos((prev) =>
-                              prev.filter((item) => item.id !== anexo.id),
-                            )
-                          }
-                          className="text-brand-neon/50 hover:text-red-400 transition-colors cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+        <button
+          type="button"
+          onClick={() =>
+            setFiles((currentFiles) =>
+              currentFiles.filter(
+                (_, fileIndex) => fileIndex !== index,
+              ),
+            )
+          }
+          className="text-brand-neon/50 hover:text-red-400 transition-colors cursor-pointer"
+          aria-label={`Remover ${file.name}`}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    ))}
+
+    {anexos.map((anexo) => (
+      <div
+        key={anexo.id}
+        className="flex items-center gap-2 px-3 py-2 bg-brand-green/10 border border-brand-green/20 rounded-xl"
+      >
+        <span className="text-xs font-bold text-brand-neon truncate max-w-[150px]">
+          {anexo.nome}
+        </span>
+
+        <button
+          type="button"
+          onClick={() =>
+            setAnexos((currentAnexos) =>
+              currentAnexos.filter(
+                (item) => item.id !== anexo.id,
+              ),
+            )
+          }
+          className="text-brand-neon/50 hover:text-red-400 transition-colors cursor-pointer"
+          aria-label={`Remover ${anexo.nome}`}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    ))}
+  </div>
+)}
               </div>
 
               <div className="flex gap-4 pt-6">

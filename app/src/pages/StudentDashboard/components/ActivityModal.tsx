@@ -16,6 +16,7 @@ import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge
 import { api } from '@/services/api';
 import type { Activity } from '@/types';
 
+
 interface ActivityModalProps {
   isOpen: boolean;
   onClose: () => void;

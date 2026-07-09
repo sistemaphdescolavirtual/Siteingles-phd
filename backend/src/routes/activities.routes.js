@@ -1,7 +1,59 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../config/supabase.js';
+import { randomUUID } from 'node:crypto';
 
 const router = Router();
+const ACTIVITY_FILES_BUCKET = 'activity-files';
+const MAX_ACTIVITY_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_ACTIVITY_FILES = 3; // LIMITA A QUANTIDADE DE ARQUIVOS POR ATIVIDADE PARA 3 
+
+const ACTIVITY_FILE_TYPES = {
+   '.pdf': {
+    tipo: 'pdf',
+    contentType: 'application/pdf',
+  },
+  '.txt': {
+    tipo: 'txt',
+    contentType: 'text/plain',
+  },
+  '.xls': {
+    tipo: 'xls',
+    contentType: 'application/vnd.ms-excel',
+  },
+  '.xlsx': {
+    tipo: 'xls',
+    contentType:
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  },
+};
+
+function getActivityFileConfig(fileName) {
+  const normalizedFilename = String(fileName ?? '').trim().toLowerCase();
+  const extension = Object.keys(ACTIVITY_FILE_TYPES).find((item)=>
+  normalizedFilename.endsWith(item),
+);
+
+if (!extension) {
+  return null;
+
+
+}
+return ACTIVITY_FILE_TYPES[extension];
+}
+
+function normalizeStorageFileName(fileName) {
+  const normalized = String(fileName ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return normalized || 'arquivo';
+}
+
+
+
 
 const activitySelect = `
   id,
@@ -309,6 +361,265 @@ if (dueAt && dueAt <= publishAt) {
 
     return res.status(500).json({
       error: 'Erro interno ao criar atividade.',
+      details: error.message,
+    });
+  }
+});
+
+router.post('/:activityId/attachments/upload-url', async (req, res) => {
+  try {
+    const activityId = String(req.params.activityId ?? '').trim();
+    const professorId = String(req.body.professorId ?? '').trim();
+    const fileName = String(req.body.fileName ?? '').trim();
+    const fileSize = Number(req.body.fileSize ?? 0);
+
+    if (!activityId || !professorId || !fileName) {
+      return res.status(400).json({
+        error: 'Atividade, professor e nome do arquivo são obrigatórios.',
+      });
+    }
+
+    if (
+      !Number.isFinite(fileSize) ||
+      fileSize <= 0 ||
+      fileSize > MAX_ACTIVITY_FILE_SIZE
+    ) {
+      return res.status(400).json({
+        error: 'O arquivo deve ter no máximo 5 MB.',
+      });
+    }
+
+    const fileConfig = getActivityFileConfig(fileName);
+
+    if (!fileConfig) {
+      return res.status(400).json({
+        error: 'Formato inválido. Use PDF, TXT, XLS ou XLSX.',
+      });
+    }
+
+    const { data: activity, error: activityError } = await supabaseAdmin
+      .from('activities')
+      .select('id, professor_id')
+      .eq('id', activityId)
+      .maybeSingle();
+
+    if (activityError) {
+      console.error('Erro ao validar atividade:', activityError);
+
+      return res.status(500).json({
+        error: 'Erro ao validar atividade.',
+        details: activityError.message,
+      });
+    }
+
+    if (!activity) {
+      return res.status(404).json({
+        error: 'Atividade não encontrada.',
+      });
+    }
+
+    if (activity.professor_id !== professorId) {
+      return res.status(403).json({
+        error: 'Esta atividade não pertence a este professor.',
+      });
+    }
+
+    const {
+      count: currentFileCount,
+      error: countError,
+    } = await supabaseAdmin
+      .from('activity_attachments')
+      .select('id', {
+        count: 'exact',
+        head: true,
+      })
+      .eq('activity_id', activityId)
+      .neq('tipo', 'link');
+
+    if (countError) {
+      console.error('Erro ao contar anexos:', countError);
+
+      return res.status(500).json({
+        error: 'Erro ao validar quantidade de anexos.',
+        details: countError.message,
+      });
+    }
+
+  if ((currentFileCount ?? 0) >= MAX_ACTIVITY_FILES) {
+  return res.status(400).json({
+    error: 'A atividade já possui o limite de 3 arquivos.',
+  });
+
+    }
+
+    const safeFileName = normalizeStorageFileName(fileName);
+
+    const path =
+      `${activityId}/${randomUUID()}-${safeFileName}`;
+
+    const { data: uploadData, error: uploadError } =
+      await supabaseAdmin.storage
+        .from(ACTIVITY_FILES_BUCKET)
+        .createSignedUploadUrl(path);
+
+    if (uploadError) {
+      console.error(
+        'Erro ao gerar URL de upload:',
+        uploadError,
+      );
+
+      return res.status(500).json({
+        error: 'Não foi possível preparar o upload.',
+        details: uploadError.message,
+      });
+    }
+
+    return res.status(200).json({
+      path,
+      token: uploadData.token,
+      contentType: fileConfig.contentType,
+      tipo: fileConfig.tipo,
+      maxFileSize: MAX_ACTIVITY_FILE_SIZE,
+    });
+  } catch (error) {
+    console.error(
+      'Erro inesperado ao preparar upload:',
+      error,
+    );
+
+    return res.status(500).json({
+      error: 'Erro interno ao preparar upload.',
+      details: error.message,
+    });
+  }
+});
+
+router.post('/:activityId/attachments/confirm', async (req, res) => {
+  try {
+    const activityId = String(req.params.activityId ?? '').trim();
+    const professorId = String(req.body.professorId ?? '').trim();
+    const path = String(req.body.path ?? '').trim();
+    const fileName = String(req.body.fileName ?? '').trim();
+
+    if (!activityId || !professorId || !path || !fileName) {
+      return res.status(400).json({
+        error: 'Dados do anexo incompletos.',
+      });
+    }
+
+    if (!path.startsWith(`${activityId}/`)) {
+      return res.status(400).json({
+        error: 'Caminho do arquivo inválido.',
+      });
+    }
+
+    const fileConfig = getActivityFileConfig(fileName);
+
+    if (!fileConfig) {
+      return res.status(400).json({
+        error: 'Formato de arquivo inválido.',
+      });
+    }
+
+    const { data: activity, error: activityError } = await supabaseAdmin
+      .from('activities')
+      .select('id, professor_id')
+      .eq('id', activityId)
+      .maybeSingle();
+
+    if (activityError) {
+      console.error('Erro ao validar atividade:', activityError);
+
+      return res.status(500).json({
+        error: 'Erro ao validar atividade.',
+        details: activityError.message,
+      });
+    }
+
+    if (!activity) {
+      return res.status(404).json({
+        error: 'Atividade não encontrada.',
+      });
+    }
+
+    if (activity.professor_id !== professorId) {
+      return res.status(403).json({
+        error: 'Esta atividade não pertence a este professor.',
+      });
+    }
+
+    const objectName = path.split('/').pop();
+
+    const { data: storageFiles, error: storageError } =
+      await supabaseAdmin.storage
+        .from(ACTIVITY_FILES_BUCKET)
+        .list(activityId, {
+          limit: 10,
+          search: objectName,
+        });
+
+    if (storageError) {
+      console.error(
+        'Erro ao confirmar arquivo no Storage:',
+        storageError,
+      );
+
+      return res.status(500).json({
+        error: 'Não foi possível confirmar o arquivo.',
+        details: storageError.message,
+      });
+    }
+
+    const fileExists = (storageFiles ?? []).some(
+      (item) => item.name === objectName,
+    );
+
+    if (!fileExists) {
+      return res.status(400).json({
+        error: 'O arquivo ainda não foi enviado ao Storage.',
+      });
+    }
+
+    const { data: attachment, error: attachmentError } =
+      await supabaseAdmin
+        .from('activity_attachments')
+        .insert({
+          activity_id: activityId,
+          nome: fileName,
+          tipo: fileConfig.tipo,
+          url: path,
+        })
+        .select('id, nome, tipo, url')
+        .single();
+
+    if (attachmentError) {
+      console.error(
+        'Erro ao salvar anexo:',
+        attachmentError,
+      );
+
+      await supabaseAdmin.storage
+        .from(ACTIVITY_FILES_BUCKET)
+        .remove([path]);
+
+      return res.status(500).json({
+        error: 'Não foi possível registrar o anexo.',
+        details: attachmentError.message,
+      });
+    }
+
+    return res.status(201).json({
+      message: 'Anexo registrado com sucesso.',
+      attachment,
+    });
+  } catch (error) {
+    console.error(
+      'Erro inesperado ao confirmar anexo:',
+      error,
+    );
+
+    return res.status(500).json({
+      error: 'Erro interno ao confirmar anexo.',
       details: error.message,
     });
   }

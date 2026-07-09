@@ -114,6 +114,26 @@ interface SubmitActivityCorrectionPayload {
   correctionFeedback?: string;
 }
 
+interface PrepareActivityAttachmentUploadPayload {
+  professorId: string;
+  fileName: string;
+  fileSize: number;
+}
+
+interface PrepareActivityAttachmentUploadResponse {
+  path: string;
+  token: string;
+  contentType: string;
+  tipo: Exclude<Attachment['tipo'], 'link'>;
+  maxFileSize: number;
+}
+
+interface ConfirmActivityAttachmentPayload {
+  professorId: string;
+  path: string;
+  fileName: string;
+}
+
 interface ApiChatMessage {
   id: string;
   senderId: string;
@@ -368,6 +388,39 @@ export const api = {
         method: 'PATCH',
       },
     );
+  },
+    prepareActivityAttachmentUpload: async (
+    activityId: string,
+    payload: PrepareActivityAttachmentUploadPayload,
+  ) => {
+    return request<PrepareActivityAttachmentUploadResponse>(
+      `/activities/${encodeURIComponent(activityId)}/attachments/upload-url`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
+  confirmActivityAttachment: async (
+    activityId: string,
+    payload: ConfirmActivityAttachmentPayload,
+  ) => {
+    const response = await request<{
+      message: string;
+      attachment: ApiAttachment;
+    }>(
+      `/activities/${encodeURIComponent(activityId)}/attachments/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+
+    return {
+      message: response.message,
+      attachment: response.attachment,
+    };
   },
 };
 
