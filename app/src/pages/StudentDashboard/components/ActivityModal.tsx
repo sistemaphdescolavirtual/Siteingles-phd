@@ -10,6 +10,9 @@ import {
   CheckCircle,
   RotateCcw,
   Send,
+  Download,
+  ExternalLink,
+  LoaderCircle,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge';
@@ -30,17 +33,23 @@ export function ActivityModal({
   activity,
   onSubmitted,
 }: ActivityModalProps) {
-  const [resposta, setResposta] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+ const [resposta, setResposta] = useState('');
+const [isSubmitting, setIsSubmitting] = useState(false);
+const [submitted, setSubmitted] = useState(false);
 
-  const currentUser = useAuthStore((state) => state.currentUser);
+const [attachmentAction, setAttachmentAction] =
+  useState<string | null>(null);
 
-  useEffect(() => {
+const currentUser = useAuthStore(
+  (state) => state.currentUser,
+);
+
+useEffect(() => {
     if (!isOpen) {
       setResposta('');
       setSubmitted(false);
       setIsSubmitting(false);
+       setAttachmentAction(null);
     }
   }, [isOpen]);
 
@@ -57,6 +66,101 @@ const canSubmit =
   (!activity.resposta &&
     activity.correctionStatus !== 'correta' &&
     activity.correctionStatus !== 'em_analise');
+
+
+const handleOpenAttachment = async (
+  attachmentId: string,
+) => {
+  if (!currentUser?.id) {
+    return;
+  }
+
+  const actionId = `open-${attachmentId}`;
+
+  try {
+    setAttachmentAction(actionId);
+
+    const access =
+      await api.getActivityAttachmentAccess(
+        activity.id,
+        attachmentId,
+        currentUser.id,
+      );
+
+    window.open(
+      access.viewUrl,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  } catch (error) {
+    console.error(
+      'Erro ao abrir arquivo:',
+      error,
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Erro ao abrir arquivo.',
+    );
+  } finally {
+    setAttachmentAction(null);
+  }
+};
+
+const handleDownloadAttachment = async (
+  attachmentId: string,
+) => {
+  if (!currentUser?.id) {
+    return;
+  }
+
+  const actionId = `download-${attachmentId}`;
+
+  try {
+    setAttachmentAction(actionId);
+
+    const access =
+      await api.getActivityAttachmentAccess(
+        activity.id,
+        attachmentId,
+        currentUser.id,
+      );
+
+    if (!access.downloadUrl) {
+      window.open(
+        access.viewUrl,
+        '_blank',
+        'noopener,noreferrer',
+      );
+
+      return;
+    }
+
+    const downloadLink =
+      document.createElement('a');
+
+    downloadLink.href = access.downloadUrl;
+    downloadLink.download = access.fileName;
+
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+  } catch (error) {
+    console.error(
+      'Erro ao baixar arquivo:',
+      error,
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Erro ao baixar arquivo.',
+    );
+  } finally {
+    setAttachmentAction(null);
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,31 +232,90 @@ const canSubmit =
               </div>
             </section>
 
-            {activity.anexos?.length > 0 && (
-              <section>
-                <h4 className="text-brand-green font-black uppercase tracking-[0.2em] text-[10px] mb-3">
-                  Materiais de Apoio
-                </h4>
+           {activity.anexos?.length > 0 && (
+  <section>
+    <h4 className="text-brand-green font-black uppercase tracking-[0.2em] text-[10px] mb-3">
+      Materiais de Apoio
+    </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {activity.anexos.map((anexo) => (
-                    <a
-                      key={anexo.id}
-                      href={anexo.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-brand-neon/30 transition-all group cursor-pointer"
-                    >
-                      <Paperclip className="w-5 h-5 text-gray-500 group-hover:text-brand-neon" />
-                      <p className="font-bold text-sm truncate group-hover:text-brand-neon transition-colors">
-                        {anexo.nome}
-                      </p>
-                    </a>
-                  ))}
-                </div>
-              </section>
+    <div className="space-y-3">
+      {activity.anexos.map((anexo) => {
+        const isOpening =
+          attachmentAction === `open-${anexo.id}`;
+
+        const isDownloading =
+          attachmentAction ===
+          `download-${anexo.id}`;
+
+        const isBusy =
+          isOpening || isDownloading;
+
+        return (
+          <div
+            key={anexo.id}
+            className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-brand-neon/30 transition-all"
+          >
+            <Paperclip className="w-5 h-5 text-gray-500 shrink-0" />
+
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-white truncate">
+                {anexo.nome}
+              </p>
+
+              <p className="text-[9px] text-gray-600 uppercase font-bold tracking-widest mt-1">
+                {anexo.tipo === 'link'
+                  ? 'Link externo'
+                  : anexo.tipo}
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isBusy}
+              onClick={() =>
+                void handleOpenAttachment(anexo.id)
+              }
+              className="h-10 px-3 rounded-xl text-brand-neon hover:text-black hover:bg-brand-green"
+              title={
+                anexo.tipo === 'link'
+                  ? 'Abrir link'
+                  : 'Abrir arquivo'
+              }
+            >
+              {isOpening ? (
+                <LoaderCircle className="w-4 h-4 animate-spin" />
+              ) : (
+                <ExternalLink className="w-4 h-4" />
+              )}
+            </Button>
+
+            {anexo.tipo !== 'link' && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isBusy}
+                onClick={() =>
+                  void handleDownloadAttachment(
+                    anexo.id,
+                  )
+                }
+                className="h-10 px-3 rounded-xl text-gray-400 hover:text-black hover:bg-brand-green"
+                title="Baixar arquivo"
+              >
+                {isDownloading ? (
+                  <LoaderCircle className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+              </Button>
             )}
-
+          </div>
+        );
+      })}
+    </div>
+  </section>
+)}
             {activity.resposta && (
               <section className="relative">
                 <div className="relative p-6 bg-brand-green/5 border border-brand-green/20 rounded-2xl">

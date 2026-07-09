@@ -134,6 +134,15 @@ interface ConfirmActivityAttachmentPayload {
   fileName: string;
 }
 
+interface ActivityAttachmentAccessResponse {
+  attachmentId: string;
+  fileName: string;
+  tipo: Attachment['tipo'];
+  viewUrl: string;
+  downloadUrl: string | null;
+  expiresIn: number | null;
+}
+
 interface ApiChatMessage {
   id: string;
   senderId: string;
@@ -422,5 +431,16 @@ export const api = {
       attachment: response.attachment,
     };
   },
+
+  getActivityAttachmentAccess: async (
+    activityId: string,
+    attachmentId: string,
+    userId: string,
+  ) => {
+    return request<ActivityAttachmentAccessResponse>(
+      `/activities/${encodeURIComponent(activityId)}/attachments/${encodeURIComponent(attachmentId)}/access?userId=${encodeURIComponent(userId)}`,
+    );
+  },
+
 };
 
