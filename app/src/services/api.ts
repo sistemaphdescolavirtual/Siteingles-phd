@@ -2,10 +2,12 @@ import type {
   Activity,
   Attachment,
   ChatMessage,
+  Notification,
   User,
   UserRole,
   UserStatus,
 } from '@/types';
+
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
 
@@ -103,11 +105,13 @@ interface CreateActivityPayload {
     url: string;
   }>;
 }
+
 interface SubmitActivityResponsePayload {
   alunoId: string;
   tipo?: 'texto' | 'concluido';
   conteudo: string;
 }
+
 interface SubmitActivityCorrectionPayload {
   professorId: string;
   correctionStatus: 'correta' | 'incorreta' | 'devolvida';
@@ -158,6 +162,20 @@ interface SendChatMessagePayload {
   message: string;
 }
 
+interface ApiNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: Notification['type'];
+  read: boolean;
+  resolved: boolean;
+  resolution?: Notification['resolution'];
+  createdAt: string;
+  data?: Notification['data'];
+}
+
+
 function mapApiUser(apiUser: ApiUser): User {
   return {
     id: apiUser.id,
@@ -192,6 +210,23 @@ function mapApiChatMessage(
   };
 }
 
+function mapApiNotification(
+  apiNotification: ApiNotification,
+): Notification {
+  return {
+    id: apiNotification.id,
+    userId: apiNotification.userId,
+    title: apiNotification.title,
+    message: apiNotification.message,
+    type: apiNotification.type,
+    read: apiNotification.read,
+    resolved: apiNotification.resolved,
+    resolution: apiNotification.resolution,
+    createdAt: new Date(apiNotification.createdAt),
+    data: apiNotification.data,
+  };
+}
+
 function mapApiActivity(apiActivity: ApiActivity): Activity {
   return {
     id: apiActivity.id,
@@ -205,11 +240,11 @@ function mapApiActivity(apiActivity: ApiActivity): Activity {
     correctionFeedback: apiActivity.correctionFeedback,
     createdAt: new Date(apiActivity.createdAt),
     publishAt: apiActivity.publishAt
-  ? new Date(apiActivity.publishAt)
-  : undefined,
-dueAt: apiActivity.dueAt
-  ? new Date(apiActivity.dueAt)
-  : undefined,
+      ? new Date(apiActivity.publishAt)
+      : undefined,
+    dueAt: apiActivity.dueAt
+      ? new Date(apiActivity.dueAt)
+      : undefined,
     anexos: apiActivity.anexos ?? [],
     resposta: apiActivity.resposta
       ? {
@@ -317,7 +352,6 @@ export const api = {
     return response.map(mapApiActivity);
   },
 
-
   getStudentActivities: async (studentId: string) => {
     const response = await request<ApiActivity[]>(
       `/activities/student/${encodeURIComponent(studentId)}`,
@@ -362,7 +396,7 @@ export const api = {
     };
   },
 
-    getChatConversation: async (
+  getChatConversation: async (
     userId: string,
     otherUserId: string,
   ) => {
@@ -398,7 +432,8 @@ export const api = {
       },
     );
   },
-    prepareActivityAttachmentUpload: async (
+
+  prepareActivityAttachmentUpload: async (
     activityId: string,
     payload: PrepareActivityAttachmentUploadPayload,
   ) => {
@@ -442,5 +477,29 @@ export const api = {
     );
   },
 
+  getNotifications: async (userId: string) => {
+    const response = await request<ApiNotification[]>(
+      `/notifications/${encodeURIComponent(userId)}`,
+    );
+
+    return response.map(mapApiNotification);
+  },
+
+  markNotificationAsRead: async (
+    userId: string,
+    notificationId: string,
+  ) => {
+    const response = await request<{
+      message: string;
+      notification: ApiNotification;
+    }>(
+      `/notifications/${encodeURIComponent(userId)}/${encodeURIComponent(notificationId)}/read`,
+      {
+        method: 'PATCH',
+      },
+    );
+
+    return mapApiNotification(response.notification);
+  },
 };
 
