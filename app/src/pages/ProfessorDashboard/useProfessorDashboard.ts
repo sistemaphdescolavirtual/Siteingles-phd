@@ -90,6 +90,7 @@ export function useProfessorDashboard() {
 
   const [alunosReais, setAlunosReais] = useState<User[]>([]);
   const [atividades, setAtividades] = useState<Activity[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const currentUser = useAuthStore((state) => state.currentUser);
 
@@ -102,13 +103,19 @@ export function useProfessorDashboard() {
     }
 
     try {
-      const [alunosData, atividadesData] = await Promise.all([
-        request<ApiUser[]>(`/professor/${professorId}/students`),
-        api.getProfessorActivities(professorId),
-      ]);
+const [
+  alunosData,
+  atividadesData,
+  notificationsData,
+] = await Promise.all([
+  request<ApiUser[]>(`/professor/${professorId}/students`),
+  api.getProfessorActivities(professorId),
+  api.getNotifications(professorId),
+]);
 
-      setAlunosReais(alunosData.map(mapApiUser));
-      setAtividades(atividadesData);
+setAlunosReais(alunosData.map(mapApiUser));
+setAtividades(atividadesData);
+setNotifications(notificationsData);
     } catch (error) {
       console.error('Erro ao carregar dados do professor:', error);
     }
@@ -118,56 +125,18 @@ export function useProfessorDashboard() {
     void recarregarDados();
   }, [currentUser?.id, currentUser?.role]);
 
-  const alunosAprovados = alunosReais.filter(
+   const alunosAprovados = alunosReais.filter(
     (aluno) => aluno.status === 'aprovado',
   );
 
-  const alunosPendentes = alunosReais.filter(
-    (aluno) => aluno.status === 'pendente',
+  const pendingNotifications = notifications.filter(
+    (notification) => !notification.read,
   );
 
-  const alunosResolvidos = alunosReais.filter(
-    (aluno) => aluno.status === 'aprovado' || aluno.status === 'rejeitado',
+  const resolvedNotifications = notifications.filter(
+    (notification) => notification.read,
   );
-
-  const pendingNotifications: Notification[] = alunosPendentes.map((aluno) => ({
-    id: `pendente-${aluno.id}`,
-    userId: currentUser?.id ?? '',
-    title: 'Novo aluno aguardando aprovação',
-    message: `${aluno.nome} solicitou acesso ao curso de ${
-      aluno.cursoAdquirido === 'ingles' ? 'Inglês' : 'ENEM'
-    }.`,
-    type: 'autorizacao',
-    read: false,
-    resolved: false,
-    createdAt: aluno.dataCadastro,
-    data: {
-      alunoId: aluno.id,
-      curso: aluno.cursoAdquirido,
-    },
-  }));
-
-  const resolvedNotifications: Notification[] = alunosResolvidos.map((aluno) => ({
-    id: `resolvido-${aluno.id}`,
-    userId: currentUser?.id ?? '',
-    title:
-      aluno.status === 'aprovado'
-        ? 'Aluno aprovado'
-        : 'Aluno rejeitado',
-    message: `${aluno.nome} - ${
-      aluno.cursoAdquirido === 'ingles' ? 'Inglês' : 'ENEM'
-    }.`,
-    type: 'autorizacao',
-    read: true,
-    resolved: true,
-    resolution: aluno.status === 'aprovado' ? 'aprovado' : 'rejeitado',
-    createdAt: aluno.dataCadastro,
-    data: {
-      alunoId: aluno.id,
-      curso: aluno.cursoAdquirido,
-    },
-  }));
-
+ 
   const alunosPorCurso = alunosAprovados.reduce((acc, aluno) => {
     const curso = aluno.cursoAdquirido === 'ingles' ? 'Inglês' : 'ENEM';
 
@@ -229,7 +198,10 @@ export function useProfessorDashboard() {
 
       if (selectedAluno?.id === alunoAtualizado.id) {
         setSelectedAluno(alunoAtualizado);
+     
+  
       }
+         await recarregarDados();
     } catch (error) {
       console.error('Erro ao atualizar aluno:', error);
       alert(
@@ -239,6 +211,8 @@ export function useProfessorDashboard() {
       );
     }
   };
+
+
 
   const handleAprovar = (alunoId: string) => {
     void atualizarStatusAluno(alunoId, 'aprovado');
@@ -299,7 +273,86 @@ export function useProfessorDashboard() {
       setActiveTab('chat');
     }
   };
+const handleNotificationClick = async (
+  notification: Notification,
+) => {
+  if (!currentUser?.id) {
+    return;
+  }
 
+  if (
+    notification.type === 'autorizacao' &&
+    !notification.resolved
+  ) {
+    return;
+  }
+
+  try {
+    const updatedNotification =
+      await api.markNotificationAsRead(
+        currentUser.id,
+        notification.id,
+      );
+
+    setNotifications((notificationsAtuais) =>
+      notificationsAtuais.map((notificationAtual) =>
+        notificationAtual.id === updatedNotification.id
+          ? updatedNotification
+          : notificationAtual,
+      ),
+    );
+
+    setShowNotifications(false);
+
+    if (
+      notification.type === 'atividade' &&
+      notification.data?.atividadeId
+    ) {
+      const atividade = atividades.find(
+        (atividadeAtual) =>
+          atividadeAtual.id ===
+          notification.data.atividadeId,
+      );
+
+      if (atividade) {
+        setSelectedActivity(atividade);
+        setShowActivityDetail(true);
+        setActiveTab('atividades');
+      }
+
+      return;
+    }
+
+    if (
+      notification.type === 'mensagem' &&
+      notification.data?.senderId
+    ) {
+      const aluno = getAlunoById(
+        notification.data.senderId,
+      );
+
+      if (aluno) {
+        setSelectedChatAluno(aluno);
+        setActiveTab('chat');
+      }
+
+      return;
+    }
+
+    setActiveTab('notificacoes');
+  } catch (error) {
+    console.error(
+      'Erro ao abrir notificação:',
+      error,
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Erro ao abrir notificação.',
+    );
+  }
+};
   return {
     activeTab,
     setActiveTab,
@@ -341,12 +394,13 @@ export function useProfessorDashboard() {
 
     getAlunoById,
 
-    handleAprovar,
-    handleRejeitar,
-    handleActivityClick,
-    handleCorrigir,
-    handleChatClick,
+   handleAprovar,
+   handleRejeitar,
+   handleActivityClick,
+   handleCorrigir,
+   handleChatClick,
+   handleNotificationClick,
 
-    recarregarDados,
+recarregarDados,
   };
 }

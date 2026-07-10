@@ -35,7 +35,11 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
     atividades, alunosPorCurso, filteredAlunos, atividadesPorCurso,
     getAlunoById,
     handleAprovar, handleRejeitar,
-    handleActivityClick, handleCorrigir, handleChatClick, recarregarDados,
+    handleActivityClick,
+    handleCorrigir,
+    handleChatClick,
+    handleNotificationClick,
+recarregarDados,
   } = useProfessorDashboard();
 
   return (
@@ -110,7 +114,15 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
               {pendingNotifications.length > 0 && (
                 <div className="p-2">
                   <p className="px-3 py-2 text-[10px] font-black text-brand-neon uppercase tracking-widest">Pendentes</p>
-                  {pendingNotifications.map((n: any) => <NotificationItem key={n.id} notification={n} onAprovar={(id: string) => handleAprovar(id)} onRejeitar={(id: string) => handleRejeitar(id)} />)}
+                 {pendingNotifications.map((n: any) => (
+  <NotificationItem
+    key={n.id}
+    notification={n}
+    onAprovar={(id: string) => handleAprovar(id)}
+    onRejeitar={(id: string) => handleRejeitar(id)}
+    onNotificationClick={handleNotificationClick}
+  />
+))}
                 </div>
               )}
               {resolvedNotifications.length > 0 && (
@@ -370,7 +382,15 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
                     <h3 className="font-bold text-brand-neon flex items-center gap-3 uppercase tracking-widest text-sm"><AlertCircle className="w-5 h-5" /> Ações Pendentes ({pendingNotifications.length})</h3>
                   </div>
                   <div className="divide-y divide-white/5">
-                    {pendingNotifications.map((n: any) => <NotificationItem key={n.id} notification={n} onAprovar={(id: string) => handleAprovar(id)} onRejeitar={(id: string) => handleRejeitar(id)} />)}
+                   {pendingNotifications.map((n: any) => (
+  <NotificationItem
+    key={n.id}
+    notification={n}
+    onAprovar={(id: string) => handleAprovar(id)}
+    onRejeitar={(id: string) => handleRejeitar(id)}
+    onNotificationClick={handleNotificationClick}
+  />
+))}
                   </div>
                 </div>
               )}
