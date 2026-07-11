@@ -32,8 +32,9 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
     pendingNotifications, resolvedNotifications,
     professor, cursoNome, cursoBloqueado,
     totalAtividades, corretas, pendentes, emAnalise,
-    handleActivityClick,
-    recarregarAtividades,
+   handleActivityClick,
+  handleNotificationClick,
+  recarregarAtividades,
   } = useStudentDashboard();
 
   const filteredAtividades = selectedCalendarDay
@@ -113,7 +114,11 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
               {[...pendingNotifications, ...resolvedNotifications].length === 0 ? (
                 <div className="p-12 text-center text-gray-500"><Bell className="w-12 h-12 mx-auto mb-4 opacity-20" /><p className="text-sm">Nenhuma notificação</p></div>
               ) : [...pendingNotifications, ...resolvedNotifications].map((n: any) => (
-                <div key={n.id} className="p-3 rounded-2xl hover:bg-white/5 transition-colors m-2">
+                <div
+                              key={n.id}
+                              onClick={() => handleNotificationClick(n)}
+                              className="p-3 rounded-2xl hover:bg-white/5 transition-colors m-2 cursor-pointer"
+                            >
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full mt-2 shrink-0 bg-brand-neon shadow-[0_0_8px_#00ff88]" />
                     <div>
@@ -340,7 +345,7 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
                   <div className="p-6 border-b border-brand-green/20 bg-brand-green/5"><h3 className="font-bold text-brand-neon flex items-center gap-3 uppercase tracking-widest text-sm"><AlertCircle className="w-5 h-5" /> Pendentes ({pendingNotifications.length})</h3></div>
                   <div className="divide-y divide-white/5">
                     {pendingNotifications.map((n: any) => (
-                      <div key={n.id} className="p-6 hover:bg-white/[0.02] transition-colors">
+                     <div  key={n.id} onClick={() => handleNotificationClick(n)} className="p-6 hover:bg-white/[0.02] transition-colors cursor-pointer"> 
                         <div className="flex items-start gap-4">
                           <div className="w-2.5 h-2.5 rounded-full bg-brand-neon mt-2 shrink-0 shadow-[0_0_10px_#00ff88]" />
                           <div className="flex-1">
@@ -364,7 +369,7 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
                 ) : (
                   <div className="divide-y divide-white/5">
                     {resolvedNotifications.map((n: any) => (
-                      <div key={n.id} className="p-6 opacity-60 hover:opacity-100 transition-all">
+                     <div key={n.id}  onClick={() => handleNotificationClick(n)} className="p-6 opacity-60 hover:opacity-100 transition-all cursor-pointer"> 
                         <div className="flex items-start gap-4">
                           <CheckCircle className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
                           <div className="flex-1">

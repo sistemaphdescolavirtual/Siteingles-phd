@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/services/api';
-import type { Activity, User } from '@/types';
+import type { Activity, Notification, User } from '@/types';
 
 export type TabValue = 'cursos' | 'atividades' | 'chat' | 'notificacoes';
 
@@ -14,8 +14,8 @@ export function useStudentDashboard() {
   const [expandedCurso, setExpandedCurso] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(null);
-
   const [atividadesReais, setAtividadesReais] = useState<Activity[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [professor, setProfessor] = useState<User | null>(null);
 
   const currentUser = useAuthStore((state) => state.currentUser) as User | null;
@@ -27,13 +27,18 @@ export function useStudentDashboard() {
       return;
     }
 
-    try {
-      const atividadesData = await api.getStudentActivities(currentUser.id);
+try {
+  const [atividadesData, notificationsData] =
+    await Promise.all([
+      api.getStudentActivities(currentUser.id),
+      api.getNotifications(currentUser.id),
+    ]);
 
-      setAtividadesReais(atividadesData);
-    } catch (error) {
-      console.error('Erro ao carregar atividades do aluno:', error);
-    }
+  setAtividadesReais(atividadesData);
+  setNotifications(notificationsData);
+} catch (error) {
+  console.error('Erro ao carregar dados do aluno:', error);
+}
   };
 
   const carregarProfessor = async () => {
@@ -81,42 +86,13 @@ export function useStudentDashboard() {
     'devolvida',
   ];
 
-  const pendingNotifications: any[] = atividades
-    .filter((atividade) =>
-      actionableStatuses.includes(atividade.correctionStatus),
-    )
-    .map((atividade) => ({
-      id: `atividade-${atividade.id}`,
-      userId: currentUser?.id ?? '',
-      title: 'Atividade pendente',
-      message: `Você recebeu uma atividade: ${atividade.titulo}`,
-      type: 'atividade',
-      read: false,
-      resolved: false,
-      createdAt: atividade.createdAt,
-      data: {
-        atividadeId: atividade.id,
-      },
-    }));
+ const pendingNotifications = notifications.filter(
+  (notification) => !notification.read,
+);
 
-  const resolvedNotifications: any[] = atividades
-    .filter(
-      (atividade) =>
-        !actionableStatuses.includes(atividade.correctionStatus),
-    )
-    .map((atividade) => ({
-      id: `atividade-resolvida-${atividade.id}`,
-      userId: currentUser?.id ?? '',
-      title: 'Atividade atualizada',
-      message: `Sua atividade "${atividade.titulo}" foi atualizada.`,
-      type: 'atividade',
-      read: true,
-      resolved: true,
-      createdAt: atividade.createdAt,
-      data: {
-        atividadeId: atividade.id,
-      },
-    }));
+const resolvedNotifications = notifications.filter(
+  (notification) => notification.read,
+);
 
   const cursoNome =
     cursoAdquirido === 'ingles'
@@ -158,6 +134,68 @@ export function useStudentDashboard() {
     setSelectedActivity(activity);
     setShowActivityModal(true);
   };
+  const handleNotificationClick = async (
+  notification: Notification,
+) => {
+  if (!currentUser?.id) {
+    return;
+  }
+
+  try {
+    const updatedNotification =
+      await api.markNotificationAsRead(
+        currentUser.id,
+        notification.id,
+      );
+
+    setNotifications((notificationsAtuais) =>
+      notificationsAtuais.map((notificationAtual) =>
+        notificationAtual.id === updatedNotification.id
+          ? updatedNotification
+          : notificationAtual,
+      ),
+    );
+
+    setShowNotifDropdown(false);
+
+    if (
+      notification.type === 'atividade' &&
+      notification.data?.atividadeId
+    ) {
+      const atividade = atividades.find(
+        (atividadeAtual) =>
+          atividadeAtual.id ===
+          notification.data.atividadeId,
+      );
+
+      if (atividade) {
+        setSelectedActivity(atividade);
+        setShowActivityModal(true);
+        setActiveTab('atividades');
+      }
+
+      return;
+    }
+
+    if (notification.type === 'mensagem') {
+      setActiveTab('chat');
+      return;
+    }
+
+    setActiveTab('notificacoes');
+  } catch (error) {
+    console.error(
+      'Erro ao abrir notificação:',
+      error,
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Erro ao abrir notificação.',
+    );
+  }
+};
 
   return {
     activeTab,
@@ -202,7 +240,8 @@ export function useStudentDashboard() {
     pendentes,
     emAnalise,
 
-    handleActivityClick,
-    recarregarAtividades,
+  handleActivityClick,
+  handleNotificationClick,
+  recarregarAtividades,
   };
 }
