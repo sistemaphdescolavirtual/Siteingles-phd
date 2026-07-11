@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import type { User } from '@/types';
+import { api } from '@/services/api';
+import type { Activity, User } from '@/types';
 
 export type AdmTab = 'operacao' | 'professores' | 'alunos' | 'notificacoes';
 export type ProfView = 'list' | 'detail' | 'aluno-detail';
@@ -18,22 +19,45 @@ export function useAdmDashboard() {
   const [alunoFiltroStatus, setAlunoFiltroStatus] = useState<'todos' | 'aprovado' | 'pendente' | 'rejeitado'>('todos');
   const [alunoSearch, setAlunoSearch] = useState('');
 
-  const {
-    currentUser,
-    getAllProfessores,
-    getAllAlunos,
-    getAllAtividades,
-    getAtividadesByProfessor,
-    aprovarAluno,
-    rejeitarAluno,
-    getPendingNotifications,
-    getResolvedNotifications,
-    markNotificationAsResolved,
-  } = useAuthStore();
+   const currentUser = useAuthStore((state) => state.currentUser);
 
-  const professores = getAllProfessores();
-  const todosAlunos = getAllAlunos();
-  const todasAtividades = getAllAtividades();
+  const [professores, setProfessores] = useState<User[]>([]);
+  const [todosAlunos, setTodosAlunos] = useState<User[]>([]);
+  const [todasAtividades, setTodasAtividades] = useState<Activity[]>([]);
+
+  const recarregarDados = async () => {
+    try {
+      const [
+        professoresData,
+        alunosData,
+        atividadesData,
+      ] = await Promise.all([
+        api.getAdminProfessors(),
+        api.getAdminStudents(),
+        api.getAdminActivities(),
+      ]);
+
+      setProfessores(professoresData);
+      setTodosAlunos(alunosData);
+      setTodasAtividades(atividadesData);
+    } catch (error) {
+      console.error(
+        'Erro ao carregar dados do gestor:',
+        error,
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Erro ao carregar dados do gestor.',
+      );
+    }
+  };
+
+  useEffect(() => {
+    void recarregarDados();
+  }, []);
+
 
   // Métricas globais
   const metrics = {
@@ -45,8 +69,8 @@ export function useAdmDashboard() {
   };
 
   // Notificações globais (admin vê todas)
-  const allPendingNotifs = currentUser ? getPendingNotifications(currentUser.id) : [];
-  const allResolvedNotifs = currentUser ? getResolvedNotifications(currentUser.id) : [];
+  const allPendingNotifs: any[] = [];
+  const allResolvedNotifs: any[] = [];
 
   // Alertas dinâmicos para painel de operação
   const alertas = [
@@ -78,7 +102,10 @@ export function useAdmDashboard() {
 
   // Atividades do professor selecionado
   const atividadesDoProfessor = selectedProfessor
-    ? getAtividadesByProfessor(selectedProfessor.id)
+    ? todasAtividades.filter(
+        (atividade) =>
+          atividade.professorId === selectedProfessor.id,
+      )
     : [];
 
   // Alunos filtrados na aba Alunos
@@ -110,16 +137,58 @@ export function useAdmDashboard() {
     setSelectedAluno(null);
   };
 
+    const atualizarStatusAluno = async (
+    alunoId: string,
+    status: 'aprovado' | 'rejeitado',
+  ) => {
+    try {
+      const response = await api.updateAdminUserStatus(
+        alunoId,
+        status,
+      );
+
+      const alunoAtualizado = response.user;
+
+      setTodosAlunos((alunosAtuais) =>
+        alunosAtuais.map((aluno) =>
+          aluno.id === alunoAtualizado.id
+            ? alunoAtualizado
+            : aluno,
+        ),
+      );
+
+      if (selectedAluno?.id === alunoAtualizado.id) {
+        setSelectedAluno(alunoAtualizado);
+      }
+
+      await recarregarDados();
+    } catch (error) {
+      console.error(
+        'Erro ao atualizar aluno pelo gestor:',
+        error,
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Erro ao atualizar aluno.',
+      );
+    }
+  };
+
   const handleAprovarAluno = (alunoId: string) => {
-    aprovarAluno(alunoId);
+    void atualizarStatusAluno(alunoId, 'aprovado');
   };
 
   const handleRejeitarAluno = (alunoId: string) => {
-    rejeitarAluno(alunoId);
+    void atualizarStatusAluno(alunoId, 'rejeitado');
   };
 
-  const handleResolveNotif = (notifId: string, resolution: 'aprovado' | 'rejeitado') => {
-    markNotificationAsResolved(notifId, resolution);
+  const handleResolveNotif = (
+    _notifId: string,
+    _resolution: 'aprovado' | 'rejeitado',
+  ) => {
+    // Notificações do gestor serão tratadas depois, se necessário.
   };
 
   // Helper: encontrar professor de um aluno
@@ -153,5 +222,6 @@ export function useAdmDashboard() {
     handleRejeitarAluno,
     handleResolveNotif,
     getProfessorDoAluno,
+    recarregarDados,
   };
 }

@@ -11,6 +11,7 @@ import professorRouter from './routes/professor.routes.js';
 import activitiesRouter from './routes/activities.routes.js';
 import notificationsRouter from './routes/notifications.routes.js';
 import chatRouter from './routes/chat.routes.js';
+import adminRouter from './routes/admin.routes.js';
 const app = express();
 
 const port = Number(process.env.PORT) || 3001;
@@ -115,6 +116,8 @@ app.use('/api/professor', professorRouter);
 app.use('/api/activities', activitiesRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/admin', adminRouter);
+
 
 app.use((_req, res) => {
   return res.status(404).json({

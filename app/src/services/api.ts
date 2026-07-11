@@ -290,8 +290,53 @@ export const api = {
       database: string;
     }>('/health'),
 
-  getEnglishModules: () =>
+   getEnglishModules: () =>
     request<EnglishModule[]>('/modules'),
+
+  getAdminUsers: async () => {
+    const response = await request<ApiUser[]>('/admin/users');
+
+    return response.map(mapApiUser);
+  },
+
+  getAdminProfessors: async () => {
+    const response = await request<ApiUser[]>('/admin/professors');
+
+    return response.map(mapApiUser);
+  },
+
+  getAdminStudents: async () => {
+    const response = await request<ApiUser[]>('/admin/students');
+
+    return response.map(mapApiUser);
+  },
+
+  getAdminActivities: async () => {
+    const response = await request<ApiActivity[]>('/admin/activities');
+
+    return response.map(mapApiActivity);
+  },
+
+  updateAdminUserStatus: async (
+    userId: string,
+    status: UserStatus,
+  ) => {
+    const response = await request<{
+      message: string;
+      user: ApiUser;
+    }>(
+      `/admin/users/${encodeURIComponent(userId)}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      },
+    );
+
+    return {
+      message: response.message,
+      user: mapApiUser(response.user),
+    };
+  },
 
   validateProfessorCode: async (codigo: string) => {
     return request<{
