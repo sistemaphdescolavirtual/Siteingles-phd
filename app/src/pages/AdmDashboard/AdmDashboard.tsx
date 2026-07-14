@@ -4,7 +4,7 @@ import {
   GraduationCap, Bell, LogOut, Users, Shield,
   BookOpen, FileText, AlertTriangle, CheckCircle,
   ChevronLeft, Search, TrendingUp, Activity,
-  Clock, UserCheck, UserX, BarChart3, Settings,
+  Clock, UserCheck, BarChart3, Settings,
   Paperclip, ExternalLink, Download, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,89 @@ function StatusBadge({ status }: { status: User['status'] }) {
     <Badge className={`${map[status]} uppercase tracking-widest px-2 py-0.5 font-black text-[9px] w-fit border`}>
       {label[status]}
     </Badge>
+  );
+}
+
+
+function UserStatusActions({
+  user,
+  onAprovar,
+  onRejeitar,
+  label,
+}: {
+  user: User;
+  onAprovar: (userId: string) => void;
+  onRejeitar: (userId: string) => void;
+  label: 'aluno' | 'professor';
+}) {
+  const handleAprovar = (event: any) => {
+    event.stopPropagation();
+
+    const acao = user.status === 'rejeitado' ? 'reativar' : 'aprovar';
+
+    const confirmed = window.confirm(
+      `Deseja ${acao} ${label === 'aluno' ? 'o aluno' : 'o professor'} ${user.nome}?`,
+    );
+
+    if (!confirmed) return;
+
+    onAprovar(user.id);
+  };
+
+  const handleRejeitar = (event: any) => {
+    event.stopPropagation();
+
+    const confirmed = window.confirm(
+      `Deseja vetar ${label === 'aluno' ? 'o aluno' : 'o professor'} ${user.nome}?`,
+    );
+
+    if (!confirmed) return;
+
+    onRejeitar(user.id);
+  };
+
+  if (user.status === 'aprovado') {
+    return (
+      <div className="flex gap-2 flex-wrap" onClick={(event) => event.stopPropagation()}>
+        <button
+          onClick={handleRejeitar}
+          className="text-[10px] font-bold text-red-400 border border-red-500/30 rounded-lg px-2.5 py-1 hover:bg-red-500/10 transition-all cursor-pointer"
+        >
+          Vetar
+        </button>
+      </div>
+    );
+  }
+
+  if (user.status === 'rejeitado') {
+    return (
+      <div className="flex gap-2 flex-wrap" onClick={(event) => event.stopPropagation()}>
+        <button
+          onClick={handleAprovar}
+          className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-all cursor-pointer"
+        >
+          Reativar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2 flex-wrap" onClick={(event) => event.stopPropagation()}>
+      <button
+        onClick={handleAprovar}
+        className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-all cursor-pointer"
+      >
+        Aprovar
+      </button>
+
+      <button
+        onClick={handleRejeitar}
+        className="text-[10px] font-bold text-red-400 border border-red-500/30 rounded-lg px-2.5 py-1 hover:bg-red-500/10 transition-all cursor-pointer"
+      >
+        Vetar
+      </button>
+    </div>
   );
 }
 
@@ -203,7 +286,14 @@ function TabOperacao({ metrics, atividadesRecentes, alertas, professores, todosA
 
 // ─── Aba Professores — Nível 1 ───────────────────────────────────────────────
 
-function ProfessorList({ professores, todosAlunos, todasAtividades, onSelect }: any) {
+function ProfessorList({
+  professores,
+  todosAlunos,
+  todasAtividades,
+  onSelect,
+  onAprovar,
+  onRejeitar,
+}: any) {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       <p className="text-gray-500 text-sm">{professores.length} professor{professores.length !== 1 ? 'es' : ''} cadastrado{professores.length !== 1 ? 's' : ''}</p>
@@ -229,8 +319,9 @@ function ProfessorList({ professores, todosAlunos, todasAtividades, onSelect }: 
                 <Avatar nome={prof.nome} size="lg" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-lg font-display group-hover:text-brand-neon transition-colors truncate">{prof.nome}</h3>
-                  <p className="text-gray-500 text-sm truncate">{prof.email}</p>
+                                    <p className="text-gray-500 text-sm truncate">{prof.email}</p>
                   <div className="flex gap-2 mt-2 flex-wrap">
+                    <StatusBadge status={prof.status} />
                     {cursos.map((c: any) => (
                       <span key={c} className="text-[10px] bg-brand-green/10 text-brand-green border border-brand-green/20 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
                         {c === 'ingles' ? 'Inglês' : 'ENEM'}
@@ -253,11 +344,20 @@ function ProfessorList({ professores, todosAlunos, todasAtividades, onSelect }: 
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                <div className="font-mono text-[11px] text-brand-green/60 bg-brand-green/5 border border-brand-green/10 px-2.5 py-1 rounded-lg">
-                  {prof.codigo ?? '—'}
+                            <div className="space-y-3 pt-4 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                  <div className="font-mono text-[11px] text-brand-green/60 bg-brand-green/5 border border-brand-green/10 px-2.5 py-1 rounded-lg">
+                    {prof.codigo ?? '—'}
+                  </div>
+                  <span className="text-brand-neon font-bold text-sm group-hover:translate-x-1 transition-transform inline-block">Ver detalhes →</span>
                 </div>
-                <span className="text-brand-neon font-bold text-sm group-hover:translate-x-1 transition-transform inline-block">Ver detalhes →</span>
+
+                <UserStatusActions
+                  user={prof}
+                  label="professor"
+                  onAprovar={onAprovar}
+                  onRejeitar={onRejeitar}
+                />
               </div>
             </motion.div>
           );
@@ -302,7 +402,7 @@ function ProfessorDetail({ professor, alunos, atividades, onBack, onSelectAluno,
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <h2 className="text-3xl font-bold font-display">{professor.nome}</h2>
-                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 uppercase tracking-widest text-[10px] font-black">Ativo</Badge>
+                                <StatusBadge status={professor.status} />
               </div>
               <p className="text-gray-500 mb-5">{professor.email}</p>
 
@@ -336,6 +436,14 @@ function ProfessorDetail({ professor, alunos, atividades, onBack, onSelectAluno,
                     {c === 'ingles' ? 'Inglês' : 'ENEM'}
                   </span>
                 ))}
+              </div>
+                            <div className="mt-5">
+                <UserStatusActions
+                  user={professor}
+                  label="professor"
+                  onAprovar={onAprovar}
+                  onRejeitar={onRejeitar}
+                />
               </div>
             </div>
           </div>
@@ -373,12 +481,12 @@ function ProfessorDetail({ professor, alunos, atividades, onBack, onSelectAluno,
                     {aluno.cursoAdquirido === 'ingles' ? 'Inglês' : aluno.cursoAdquirido === 'enem' ? 'ENEM' : '—'}
                   </span>
                   <StatusBadge status={aluno.status} />
-                  {aluno.status === 'pendente' && (
-                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => onAprovar(aluno.id)} className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-all cursor-pointer">Aprovar</button>
-                      <button onClick={() => onRejeitar(aluno.id)} className="text-[10px] font-bold text-red-400 border border-red-500/30 rounded-lg px-2.5 py-1 hover:bg-red-500/10 transition-all cursor-pointer">Rejeitar</button>
-                    </div>
-                  )}
+                                    <UserStatusActions
+                    user={aluno}
+                    label="aluno"
+                    onAprovar={onAprovar}
+                    onRejeitar={onRejeitar}
+                  />
                 </div>
                 <ChevronLeft className="w-4 h-4 text-gray-600 group-hover:text-brand-neon rotate-180 transition-all" />
               </motion.div>
@@ -454,16 +562,12 @@ function AlunoDetail({
                 ))}
               </div>
 
-              {aluno.status === 'pendente' && (
-                <div className="flex gap-3">
-                  <Button onClick={() => onAprovar(aluno.id)} className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl h-10 px-5 font-bold transition-all cursor-pointer">
-                    <UserCheck className="w-4 h-4 mr-2" /> Aprovar aluno
-                  </Button>
-                  <Button onClick={() => onRejeitar(aluno.id)} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl h-10 px-5 font-bold transition-all cursor-pointer">
-                    <UserX className="w-4 h-4 mr-2" /> Rejeitar
-                  </Button>
-                </div>
-              )}
+                           <UserStatusActions
+                user={aluno}
+                label="aluno"
+                onAprovar={onAprovar}
+                onRejeitar={onRejeitar}
+              />
             </div>
           </div>
         </div>
@@ -646,12 +750,12 @@ function TabAlunos({ alunos, professores, alunoFiltroStatus, setAlunoFiltroStatu
                     {prof?.nome ?? <span className="text-gray-700">Sem professor</span>}
                   </div>
                   <StatusBadge status={aluno.status} />
-                  {aluno.status === 'pendente' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => onAprovar(aluno.id)} className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-all cursor-pointer">Aprovar</button>
-                      <button onClick={() => onRejeitar(aluno.id)} className="text-[10px] font-bold text-red-400 border border-red-500/30 rounded-lg px-2.5 py-1 hover:bg-red-500/10 transition-all cursor-pointer">Rejeitar</button>
-                    </div>
-                  )}
+                                  <UserStatusActions
+                    user={aluno}
+                    label="aluno"
+                    onAprovar={onAprovar}
+                    onRejeitar={onRejeitar}
+                  />
                 </div>
               );
             })}
@@ -921,11 +1025,13 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
             <AnimatePresence mode="wait">
               {profView === 'list' && (
                 <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <ProfessorList
+                                   <ProfessorList
                     professores={professores}
                     todosAlunos={todosAlunos}
                     todasAtividades={atividadesRecentes}
                     onSelect={handleSelectProfessor}
+                    onAprovar={handleAprovarAluno}
+                    onRejeitar={handleRejeitarAluno}
                   />
                 </motion.div>
               )}
