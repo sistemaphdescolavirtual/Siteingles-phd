@@ -340,17 +340,27 @@ router.post('/managers', async (req, res) => {
 
     const authUserId = authData.user.id;
 
-    const { data: publicUser, error: publicUserError } =
+        const { data: publicUser, error: publicUserError } =
       await supabaseAdmin
         .from('users')
-        .insert({
-          id: authUserId,
-          email,
-          documento,
-          role: 'gestor',
-          nome,
-          status: 'aprovado',
-        })
+        .upsert(
+          {
+            id: authUserId,
+            email,
+            documento,
+            role: 'gestor',
+            nome,
+            status: 'aprovado',
+            codigo: null,
+            codigo_professor: null,
+            professor_id: null,
+            curso_adquirido: null,
+            modulo_adquirido: null,
+          },
+          {
+            onConflict: 'id',
+          },
+        )
         .select(publicUserSelect)
         .single();
 
@@ -362,9 +372,11 @@ router.post('/managers', async (req, res) => {
 
       await supabaseAdmin.auth.admin.deleteUser(authUserId);
 
-      return res.status(500).json({
+            return res.status(500).json({
         error: 'Gestor criado no Auth, mas não foi salvo na tabela users.',
         details: publicUserError.message,
+        hint: publicUserError.hint,
+        code: publicUserError.code,
       });
     }
 
