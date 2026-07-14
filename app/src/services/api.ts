@@ -63,6 +63,14 @@ interface LoginPayload {
   password: string;
 }
 
+interface CreateAdminManagerPayload {
+  requesterId: string;
+  nome: string;
+  email: string;
+  password: string;
+  documento: string;
+}
+
 interface ApiAttachment {
   id: string;
   nome: string;
@@ -315,6 +323,23 @@ export const api = {
     const response = await request<ApiActivity[]>('/admin/activities');
 
     return response.map(mapApiActivity);
+  },
+
+    createAdminManager: async (
+    payload: CreateAdminManagerPayload,
+  ) => {
+    const response = await request<{
+      message: string;
+      user: ApiUser;
+    }>('/admin/managers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      message: response.message,
+      user: mapApiUser(response.user),
+    };
   },
 
   updateAdminUserStatus: async (

@@ -4,8 +4,9 @@ import {
   GraduationCap, Bell, LogOut, Users, Shield,
   BookOpen, FileText, AlertTriangle, CheckCircle,
   ChevronLeft, Search, TrendingUp, Activity,
-  Clock, UserCheck, BarChart3, Settings,
+    Clock, UserCheck, BarChart3, Settings,
   Paperclip, ExternalLink, Download, MessageSquare,
+  UserPlus, KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -766,6 +767,166 @@ function TabAlunos({ alunos, professores, alunoFiltroStatus, setAlunoFiltroStatu
   );
 }
 
+
+function TabGestores({
+  gestores,
+  form,
+  setForm,
+  isCreating,
+  onCreateManager,
+}: any) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+    >
+      <div className="glass-panel rounded-[2rem] border border-white/5 overflow-hidden">
+        <div className="px-8 py-5 border-b border-white/5 flex items-center gap-3">
+          <UserPlus className="w-4 h-4 text-brand-neon" />
+          <h3 className="font-bold font-display uppercase tracking-widest text-sm text-gray-400">
+            Cadastrar novo gestor
+          </h3>
+        </div>
+
+        <form
+          onSubmit={onCreateManager}
+          className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          <div className="space-y-2">
+            <label className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">
+              Nome
+            </label>
+            <Input
+              value={form.nome}
+              onChange={(event) =>
+                setForm((current: any) => ({
+                  ...current,
+                  nome: event.target.value,
+                }))
+              }
+              placeholder="Nome do gestor"
+              className="h-11 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">
+              Email
+            </label>
+            <Input
+              value={form.email}
+              onChange={(event) =>
+                setForm((current: any) => ({
+                  ...current,
+                  email: event.target.value,
+                }))
+              }
+              placeholder="email@exemplo.com"
+              className="h-11 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">
+              Documento
+            </label>
+            <Input
+              value={form.documento}
+              onChange={(event) =>
+                setForm((current: any) => ({
+                  ...current,
+                  documento: event.target.value,
+                }))
+              }
+              placeholder="CPF ou CNPJ"
+              className="h-11 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">
+              Senha temporária
+            </label>
+            <Input
+              type="password"
+              value={form.password}
+              onChange={(event) =>
+                setForm((current: any) => ({
+                  ...current,
+                  password: event.target.value,
+                }))
+              }
+              placeholder="Mínimo 8 caracteres"
+              className="h-11 bg-white/5 border-white/10 rounded-xl focus:border-brand-green/50 text-sm"
+            />
+          </div>
+
+          <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4">
+            <p className="text-xs text-gray-500 flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-brand-green" />
+              O novo gestor já nasce aprovado e poderá acessar o painel administrativo.
+            </p>
+
+            <Button
+              type="submit"
+              disabled={isCreating}
+              className="bg-brand-green hover:bg-brand-neon text-black rounded-xl h-11 px-6 font-black transition-all cursor-pointer disabled:opacity-60"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              {isCreating ? 'Cadastrando...' : 'Cadastrar gestor'}
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      <div className="glass-panel rounded-[2rem] border border-white/5 overflow-hidden">
+        <div className="px-8 py-5 border-b border-white/5 flex items-center gap-3">
+          <Shield className="w-4 h-4 text-brand-neon" />
+          <h3 className="font-bold font-display uppercase tracking-widest text-sm text-gray-400">
+            Gestores cadastrados
+          </h3>
+          <span className="text-[11px] text-gray-600">
+            ({gestores.length})
+          </span>
+        </div>
+
+        {gestores.length === 0 ? (
+          <div className="py-16 text-center text-gray-600">
+            <Shield className="w-10 h-10 mx-auto mb-3 opacity-20" />
+            <p className="text-sm">Nenhum gestor encontrado</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/[0.03]">
+            {gestores.map((gestor: User) => (
+              <div
+                key={gestor.id}
+                className="flex items-center gap-5 px-8 py-4 hover:bg-white/[0.02] transition-colors"
+              >
+                <Avatar nome={gestor.nome} size="sm" />
+
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm">{gestor.nome}</p>
+                  <p className="text-[11px] text-gray-600 truncate">
+                    {gestor.email}
+                  </p>
+                </div>
+
+                <StatusBadge status={gestor.status} />
+
+                <span className="text-[10px] bg-brand-green/10 text-brand-green border border-brand-green/20 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                  {gestor.role}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+
 // ─── Aba Notificações ─────────────────────────────────────────────────────────
 
 function TabNotificacoes({ pendentes, resolvidas }: any) {
@@ -826,6 +987,7 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
     currentUser,
     professores,
     todosAlunos,
+    gestores,
     metrics,
     alertas,
     atividadesRecentes,
@@ -842,9 +1004,76 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
     handleAprovarAluno,
     handleRejeitarAluno,
     getProfessorDoAluno,
+    recarregarDados,
   } = useAdmDashboard();
 
-    const [showSettings, setShowSettings] = useState(false);
+      const [showSettings, setShowSettings] = useState(false);
+  const [isCreatingManager, setIsCreatingManager] = useState(false);
+  const [managerForm, setManagerForm] = useState({
+    nome: '',
+    email: '',
+    documento: '',
+    password: '',
+  });
+
+  const handleCreateManager = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (!currentUser) {
+      alert('Gestor atual não encontrado.');
+      return;
+    }
+
+    if (
+      !managerForm.nome.trim() ||
+      !managerForm.email.trim() ||
+      !managerForm.documento.trim() ||
+      !managerForm.password
+    ) {
+      alert('Preencha nome, email, documento e senha.');
+      return;
+    }
+
+    if (managerForm.password.length < 8) {
+      alert('A senha precisa ter pelo menos 8 caracteres.');
+      return;
+    }
+
+    setIsCreatingManager(true);
+
+    try {
+      await api.createAdminManager({
+        requesterId: currentUser.id,
+        nome: managerForm.nome.trim(),
+        email: managerForm.email.trim(),
+        documento: managerForm.documento.trim(),
+        password: managerForm.password,
+      });
+
+      setManagerForm({
+        nome: '',
+        email: '',
+        documento: '',
+        password: '',
+      });
+
+      await recarregarDados();
+
+      alert('Gestor cadastrado com sucesso.');
+    } catch (error) {
+      console.error('Erro ao cadastrar gestor:', error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Erro ao cadastrar gestor.',
+      );
+    } finally {
+      setIsCreatingManager(false);
+    }
+  };
 
   const handleOpenAttachment = async (
     activityId: string,
@@ -1003,6 +1232,9 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
                   </span>
                 )}
               </TabsTrigger>
+                            <TabsTrigger value="gestores" className="flex items-center gap-2 rounded-xl px-5 data-[state=active]:bg-brand-green data-[state=active]:text-black font-bold transition-all cursor-pointer">
+                <Shield className="w-4 h-4" /><span className="hidden sm:inline">Gestores</span>
+              </TabsTrigger>
               <TabsTrigger value="notificacoes" className="flex items-center gap-2 rounded-xl px-5 data-[state=active]:bg-brand-green data-[state=active]:text-black font-bold transition-all cursor-pointer">
                 <Bell className="w-4 h-4" /><span className="hidden sm:inline">Notificações</span>
               </TabsTrigger>
@@ -1073,6 +1305,18 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
               setAlunoSearch={setAlunoSearch}
               onAprovar={handleAprovarAluno}
               onRejeitar={handleRejeitarAluno}
+            />
+          </TabsContent>
+
+
+          {/* Gestores */}
+          <TabsContent value="gestores">
+            <TabGestores
+              gestores={gestores}
+              form={managerForm}
+              setForm={setManagerForm}
+              isCreating={isCreatingManager}
+              onCreateManager={handleCreateManager}
             />
           </TabsContent>
 

@@ -3,7 +3,7 @@ import { useAuthStore } from '@/store/authStore';
 import { api } from '@/services/api';
 import type { Activity, User } from '@/types';
 
-export type AdmTab = 'operacao' | 'professores' | 'alunos' | 'notificacoes';
+export type AdmTab = 'operacao' | 'professores' | 'alunos' | 'gestores' | 'notificacoes';
 export type ProfView = 'list' | 'detail' | 'aluno-detail';
 
 export function useAdmDashboard() {
@@ -21,22 +21,30 @@ export function useAdmDashboard() {
 
    const currentUser = useAuthStore((state) => state.currentUser);
 
-  const [professores, setProfessores] = useState<User[]>([]);
+    const [professores, setProfessores] = useState<User[]>([]);
   const [todosAlunos, setTodosAlunos] = useState<User[]>([]);
+  const [gestores, setGestores] = useState<User[]>([]);
   const [todasAtividades, setTodasAtividades] = useState<Activity[]>([]);
 
   const recarregarDados = async () => {
     try {
-      const [
+          const [
+        usuariosData,
         professoresData,
         alunosData,
         atividadesData,
       ] = await Promise.all([
+        api.getAdminUsers(),
         api.getAdminProfessors(),
         api.getAdminStudents(),
         api.getAdminActivities(),
       ]);
 
+            setGestores(
+        usuariosData.filter((usuario) =>
+          ['gestor', 'admin'].includes(usuario.role ?? ''),
+        ),
+      );
       setProfessores(professoresData);
       setTodosAlunos(alunosData);
       setTodasAtividades(atividadesData);
@@ -205,6 +213,7 @@ export function useAdmDashboard() {
     currentUser,
     professores,
     todosAlunos,
+    gestores,
     metrics,
     alertas,
     atividadesRecentes,
