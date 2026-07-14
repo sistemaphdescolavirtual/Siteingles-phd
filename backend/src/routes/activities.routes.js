@@ -457,9 +457,35 @@ router.get(
         });
       }
 
+            const {
+        data: requestingUser,
+        error: requestingUserError,
+      } = await supabaseAdmin
+        .from('users')
+        .select('id, role, status')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (requestingUserError) {
+        console.error(
+          'Erro ao validar usuário solicitante:',
+          requestingUserError,
+        );
+
+        return res.status(500).json({
+          error: 'Erro ao validar usuário solicitante.',
+          details: requestingUserError.message,
+        });
+      }
+
+      const isGestor =
+        requestingUser?.status === 'aprovado' &&
+        ['gestor', 'admin'].includes(requestingUser.role);
+
       const canAccess =
         activity.aluno_id === userId ||
-        activity.professor_id === userId;
+        activity.professor_id === userId ||
+        isGestor;
 
       if (!canAccess) {
         return res.status(403).json({

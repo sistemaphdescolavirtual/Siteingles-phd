@@ -5,6 +5,7 @@ import {
   BookOpen, FileText, AlertTriangle, CheckCircle,
   ChevronLeft, Search, TrendingUp, Activity,
   Clock, UserCheck, UserX, BarChart3, Settings,
+  Paperclip, ExternalLink, Download, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { Avatar } from '@/components/shared/Avatar';
 import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge';
 import { SettingsModal } from '@/components/shared/SettingsModal';
 import { useAdmDashboard } from './useAdmDashboard';
+import { api } from '@/services/api';
 import type { User, Activity as ActivityType } from '@/types';
 import logoPhd from '@/assets/logo_phd.png';
 
@@ -62,6 +64,48 @@ function MetricCard({ value, label, icon: Icon, accent = false }: { value: numbe
   );
 }
 
+
+function ActivityResponseBox({ atividade }: { atividade: ActivityType }) {
+  if (!atividade.resposta) {
+    return (
+      <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <MessageSquare className="w-4 h-4" />
+          Nenhuma resposta enviada pelo aluno.
+        </div>
+      </div>
+    );
+  }
+
+  const resposta = atividade.resposta;
+
+  return (
+    <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+          <MessageSquare className="w-4 h-4" />
+          Resposta do aluno
+        </div>
+
+        <span className="text-[11px] text-emerald-500/80">
+          Enviada em {new Date(resposta.enviadoEm).toLocaleString('pt-BR')}
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">
+          Tipo: {resposta.tipo === 'concluido' ? 'Concluído' : 'Texto'}
+        </p>
+
+        <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+          {resposta.tipo === 'concluido'
+            ? resposta.conteudo || 'Aluno marcou a atividade como concluída.'
+            : resposta.conteudo}
+        </p>
+      </div>
+    </div>
+  );
+}
 // ─── Aba Operação ─────────────────────────────────────────────────────────────
 
 function TabOperacao({ metrics, atividadesRecentes, alertas, professores, todosAlunos }: any) {
@@ -348,7 +392,15 @@ function ProfessorDetail({ professor, alunos, atividades, onBack, onSelectAluno,
 
 // ─── Aba Professores — Nível 3 ───────────────────────────────────────────────
 
-function AlunoDetail({ aluno, professor, atividades, onBack, onAprovar, onRejeitar }: any) {
+function AlunoDetail({
+  aluno,
+  professor,
+  atividades,
+  onBack,
+  onAprovar,
+  onRejeitar,
+  onOpenAttachment,
+}: any) {
   return (
     <motion.div
       custom={1}
@@ -431,30 +483,102 @@ function AlunoDetail({ aluno, professor, atividades, onBack, onAprovar, onRejeit
           </div>
         ) : (
           <div className="divide-y divide-white/[0.03]">
-            {atividades.map((atv: ActivityType) => (
-              <div key={atv.id} className="px-8 py-5">
-                <div className="flex items-start justify-between gap-4 mb-2">
+                        {atividades.map((atv: ActivityType) => (
+              <div key={atv.id} className="px-8 py-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm mb-1">{atv.titulo}</p>
-                    <p className="text-[12px] text-gray-500 line-clamp-2">{atv.descricao}</p>
+                    <p className="font-bold text-base mb-1">{atv.titulo}</p>
+
+                    <div className="flex flex-wrap items-center gap-4 mt-2">
+                      <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                        <Clock className="w-3 h-3" />
+                        Criada em {new Date(atv.createdAt).toLocaleDateString('pt-BR')}
+                      </div>
+
+                      {atv.resposta && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-emerald-500">
+                          <CheckCircle className="w-3 h-3" />
+                          Entregue em {new Date(atv.resposta.enviadoEm).toLocaleDateString('pt-BR')}
+                        </div>
+                      )}
+                    </div>
                   </div>
+
                   <CorrectionStatusBadge status={atv.correctionStatus} />
                 </div>
-                <div className="flex items-center gap-4 mt-3">
-                  <div className="flex items-center gap-1.5 text-[11px] text-gray-600">
-                    <Clock className="w-3 h-3" />
-                    Criada em {new Date(atv.createdAt).toLocaleDateString('pt-BR')}
+
+                <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-widest font-bold mb-2">
+                    Descrição da atividade
+                  </p>
+                  <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                    {atv.descricao}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <div className="flex items-center gap-2 text-gray-400 font-bold text-sm mb-3">
+                    <Paperclip className="w-4 h-4 text-brand-neon" />
+                    Documentos da atividade
                   </div>
-                  {atv.resposta && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-500">
-                      <CheckCircle className="w-3 h-3" />
-                      Entregue em {new Date(atv.resposta.enviadoEm).toLocaleDateString('pt-BR')}
+
+                  {atv.anexos.length === 0 ? (
+                    <p className="text-sm text-gray-600">
+                      Nenhum documento anexado pelo professor.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {atv.anexos.map((anexo) => (
+                        <div
+                          key={anexo.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/20 px-4 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm text-gray-300 font-medium truncate">
+                              {anexo.nome}
+                            </p>
+                            <p className="text-[10px] text-gray-600 uppercase tracking-widest">
+                              {anexo.tipo}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => onOpenAttachment(atv.id, anexo.id, 'view')}
+                              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-neon border border-brand-green/30 rounded-lg px-3 py-1.5 hover:bg-brand-green/10 transition-all cursor-pointer"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Abrir
+                            </button>
+
+                            {anexo.tipo !== 'link' && (
+                              <button
+                                onClick={() => onOpenAttachment(atv.id, anexo.id, 'download')}
+                                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-300 border border-white/10 rounded-lg px-3 py-1.5 hover:bg-white/5 transition-all cursor-pointer"
+                              >
+                                <Download className="w-3 h-3" />
+                                Baixar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  {atv.correctionFeedback && (
-                    <div className="text-[11px] text-gray-500 italic">"{atv.correctionFeedback}"</div>
-                  )}
                 </div>
+
+                <ActivityResponseBox atividade={atv} />
+
+                {atv.correctionFeedback && (
+                  <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
+                    <p className="text-[11px] text-amber-400 uppercase tracking-widest font-bold mb-2">
+                      Feedback da correção
+                    </p>
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                      {atv.correctionFeedback}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -616,7 +740,48 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
     getProfessorDoAluno,
   } = useAdmDashboard();
 
-  const [showSettings, setShowSettings] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+
+  const handleOpenAttachment = async (
+    activityId: string,
+    attachmentId: string,
+    mode: 'view' | 'download',
+  ) => {
+    if (!currentUser) {
+      alert('Usuário não encontrado.');
+      return;
+    }
+
+    try {
+      const access = await api.getActivityAttachmentAccess(
+        activityId,
+        attachmentId,
+        currentUser.id,
+      );
+
+      const targetUrl =
+        mode === 'download'
+          ? access.downloadUrl ?? access.viewUrl
+          : access.viewUrl;
+
+      window.open(
+        targetUrl,
+        '_blank',
+        'noopener,noreferrer',
+      );
+    } catch (error) {
+      console.error(
+        'Erro ao abrir anexo pelo gestor:',
+        error,
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Erro ao abrir anexo.',
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-brand-neon selection:text-black font-sans relative overflow-hidden cursor-default">
@@ -777,7 +942,7 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
                 />
               )}
               {profView === 'aluno-detail' && selectedAluno && (
-                <AlunoDetail
+                                <AlunoDetail
                   key={selectedAluno.id}
                   aluno={selectedAluno}
                   professor={getProfessorDoAluno(selectedAluno)}
@@ -785,6 +950,7 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
                   onBack={handleBackToDetail}
                   onAprovar={handleAprovarAluno}
                   onRejeitar={handleRejeitarAluno}
+                  onOpenAttachment={handleOpenAttachment}
                 />
               )}
             </AnimatePresence>
