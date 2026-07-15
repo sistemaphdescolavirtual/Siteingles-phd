@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabaseAdmin } from '../config/supabase.js';
+import { supabaseAdmin,  supabaseAuth} from '../config/supabase.js';
 
 const router = Router();
 
@@ -9,6 +9,93 @@ function normalizeEmail(email) {
 
 function normalizeText(value) {
   return String(value ?? '').trim();
+}
+
+
+function getBearerToken(req) {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    return null;
+  }
+
+  const [type, token] = authorization.split(' ');
+
+  if (type !== 'Bearer' || !token) {
+    return null;
+  }
+
+  return token.trim();
+}
+
+async function requireAdmin(req, res, next) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Token de autenticação não enviado.',
+      });
+    }
+
+    const { data: authData, error: authError } =
+      await supabaseAuth.auth.getUser(token);
+
+    if (authError || !authData?.user) {
+      console.error('Token inválido ao acessar rota admin:', authError);
+
+      return res.status(401).json({
+        error: 'Token inválido ou expirado.',
+        details: authError?.message,
+      });
+    }
+
+    const { data: publicUser, error: publicUserError } =
+      await supabaseAdmin
+        .from('users')
+        .select('id, role, status, nome, email')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+    if (publicUserError) {
+      console.error(
+        'Erro ao buscar usuário autenticado na rota admin:',
+        publicUserError,
+      );
+
+      return res.status(500).json({
+        error: 'Erro ao validar usuário autenticado.',
+        details: publicUserError.message,
+      });
+    }
+
+    if (!publicUser) {
+      return res.status(404).json({
+        error: 'Usuário autenticado não encontrado na tabela users.',
+      });
+    }
+
+    const isAdmin =
+      publicUser.status === 'aprovado' &&
+      ['gestor', 'admin'].includes(publicUser.role);
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        error: 'Apenas gestores aprovados podem acessar esta rota.',
+      });
+    }
+
+    req.adminUser = publicUser;
+
+    return next();
+  } catch (error) {
+    console.error('Erro inesperado no middleware admin:', error);
+
+    return res.status(500).json({
+      error: 'Erro interno ao validar acesso administrativo.',
+      details: error.message,
+    });
+  }
 }
 
 async function validateAdminRequester(requesterId) {
@@ -146,6 +233,8 @@ function mapActivity(activity) {
   };
 }
 
+router.use(requireAdmin);
+
 router.get('/users', async (_req, res) => {
   try {
     const { data, error } = await supabaseAdmin
@@ -260,8 +349,8 @@ router.get('/activities', async (_req, res) => {
 
 router.post('/managers', async (req, res) => {
   try {
-    const requesterValidation = await validateAdminRequester(
-      req.body.requesterId,
+        const requesterValidation = await validateAdminRequester(
+      req.adminUser?.id,
     );
 
     if (!requesterValidation.valid) {

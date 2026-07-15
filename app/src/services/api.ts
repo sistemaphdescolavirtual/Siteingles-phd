@@ -11,6 +11,24 @@ import type {
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
 
+ function getStoredAccessToken() {
+  try {
+    const rawSession = localStorage.getItem('authSession');
+
+    if (!rawSession) {
+      return null;
+    }
+
+    const session = JSON.parse(rawSession);
+
+    return typeof session?.access_token === 'string'
+      ? session.access_token
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface EnglishModule {
   id: number;
   aulas: number;
@@ -268,10 +286,15 @@ async function request<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
+  const accessToken = getStoredAccessToken();
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : {}),
       ...(options?.headers ?? {}),
     },
   });
