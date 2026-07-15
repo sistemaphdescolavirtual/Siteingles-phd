@@ -1,18 +1,32 @@
-import { useState, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/authStore';
 import { useCursorEffect } from '@/hooks/useCursorEffect';
 
 // Pages
-import HomePage from '@/pages/HomePage';
-import LoginPage from '@/pages/LoginPage';
-import RegisterPage from '@/pages/RegisterPage';
-import EnglishModulesPage from '@/pages/EnglishModulesPage';
-import ProfessorDashboard from '@/pages/ProfessorDashboard';
-import StudentDashboard from '@/pages/StudentDashboard';
-import AdmDashboard from '@/pages/AdmDashboard';
+const HomePage = lazy(() => import('@/pages/HomePage'));
+const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
+const EnglishModulesPage = lazy(() => import('@/pages/EnglishModulesPage'));
+const ProfessorDashboard = lazy(() => import('@/pages/ProfessorDashboard'));
+const StudentDashboard = lazy(() => import('@/pages/StudentDashboard'));
+const AdmDashboard = lazy(() => import('@/pages/AdmDashboard'));
 
 export type Page = 'home' | 'login' | 'register' | 'english-modules' | 'professor-dashboard' | 'student-dashboard' | 'adm-dashboard';
+
+function AppLoading() {
+  return (
+    <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-brand-green/20 border-t-brand-green animate-spin" />
+        <p className="text-xs uppercase tracking-[0.3em] text-gray-500">
+          Carregando PHD
+        </p>
+      </div>
+    </div>
+  );
+}
+
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -87,7 +101,9 @@ function App() {
           variants={pageVariants}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          {renderPage()}
+        <Suspense fallback={<AppLoading />}>
+            {renderPage()}
+          </Suspense>
         </motion.div>
       </AnimatePresence>
     </div>
