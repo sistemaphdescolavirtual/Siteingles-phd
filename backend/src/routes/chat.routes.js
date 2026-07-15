@@ -1,10 +1,93 @@
 import { Router } from 'express';
-import { supabaseAdmin } from '../config/supabase.js';
+import { supabaseAdmin, supabaseAuth } from '../config/supabase.js';
 
 const router = Router();
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function getBearerToken(req) {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    return null;
+  }
+
+  const [type, token] = authorization.split(' ');
+
+  if (type !== 'Bearer' || !token) {
+    return null;
+  }
+
+  return token.trim();
+}
+
+async function requireAuthenticated(req, res, next) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Token de autenticação não enviado.',
+      });
+    }
+
+    const { data: authData, error: authError } =
+      await supabaseAuth.auth.getUser(token);
+
+    if (authError || !authData?.user) {
+      console.error('Token inválido em chat:', authError);
+
+      return res.status(401).json({
+        error: 'Token inválido ou expirado.',
+        details: authError?.message,
+      });
+    }
+
+    const { data: publicUser, error: publicUserError } =
+      await supabaseAdmin
+        .from('users')
+        .select('id, role, status, nome, email, professor_id')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+    if (publicUserError) {
+      console.error(
+        'Erro ao buscar usuário autenticado em chat:',
+        publicUserError,
+      );
+
+      return res.status(500).json({
+        error: 'Erro ao validar usuário autenticado.',
+        details: publicUserError.message,
+      });
+    }
+
+    if (!publicUser) {
+      return res.status(404).json({
+        error: 'Usuário autenticado não encontrado.',
+      });
+    }
+
+    if (publicUser.status !== 'aprovado') {
+      return res.status(403).json({
+        error: 'Usuário não aprovado para acessar o chat.',
+      });
+    }
+
+    req.authUser = publicUser;
+
+    return next();
+  } catch (error) {
+    console.error('Erro inesperado ao autenticar chat:', error);
+
+    return res.status(500).json({
+      error: 'Erro interno ao autenticar usuário.',
+      details: error.message,
+    });
+  }
+}
+
 
 function mapMessage(message) {
   return {
@@ -61,6 +144,8 @@ async function validateChatParticipants(firstUserId, secondUserId) {
   };
 }
 
+router.use(requireAuthenticated);
+
 router.get('/conversation/:userId/:otherUserId', async (req, res) => {
   try {
     const userId = String(req.params.userId ?? '').trim();
@@ -69,6 +154,12 @@ router.get('/conversation/:userId/:otherUserId', async (req, res) => {
     if (!UUID_PATTERN.test(userId) || !UUID_PATTERN.test(otherUserId)) {
       return res.status(400).json({
         error: 'IDs de usuário inválidos.',
+      });
+    }
+
+        if (req.authUser.id !== userId) {
+      return res.status(403).json({
+        error: 'Você só pode acessar suas próprias conversas.',
       });
     }
 
@@ -117,7 +208,7 @@ router.get('/conversation/:userId/:otherUserId', async (req, res) => {
 
 router.post('/messages', async (req, res) => {
   try {
-    const senderId = String(req.body.senderId ?? '').trim();
+    const senderId = String(req.authUser?.id ?? '').trim();
     const receiverId = String(req.body.receiverId ?? '').trim();
     const message = String(req.body.message ?? '').trim();
 
@@ -232,6 +323,12 @@ router.patch(
       ) {
         return res.status(400).json({
           error: 'IDs de usuário inválidos.',
+        });
+      }
+
+            if (req.authUser.id !== userId) {
+        return res.status(403).json({
+          error: 'Você só pode atualizar suas próprias conversas.',
         });
       }
 
