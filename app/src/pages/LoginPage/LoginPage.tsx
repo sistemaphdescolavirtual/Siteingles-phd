@@ -128,6 +128,26 @@ export default function LoginPage({ navigateTo }: LoginPageProps) {
               <button onClick={() => navigateTo('register')} className="text-brand-green hover:underline font-medium">Cadastre-se</button>
             </p>
           </div>
+
+                    <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-600">
+            <button
+              type="button"
+              onClick={() => navigateTo('terms-of-use')}
+              className="hover:text-brand-green transition-colors"
+            >
+              Termos de Uso
+            </button>
+
+            <span>•</span>
+
+            <button
+              type="button"
+              onClick={() => navigateTo('privacy-policy')}
+              className="hover:text-brand-green transition-colors"
+            >
+              Política de Privacidade
+            </button>
+          </div>
           
         </motion.div>
       </div>

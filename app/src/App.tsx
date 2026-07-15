@@ -11,8 +11,19 @@ const EnglishModulesPage = lazy(() => import('@/pages/EnglishModulesPage'));
 const ProfessorDashboard = lazy(() => import('@/pages/ProfessorDashboard'));
 const StudentDashboard = lazy(() => import('@/pages/StudentDashboard'));
 const AdmDashboard = lazy(() => import('@/pages/AdmDashboard'));
+const PrivacyPolicyPage = lazy(() => import('@/pages/LegalPages/PrivacyPolicyPage'));
+const TermsOfUsePage = lazy(() => import('@/pages/LegalPages/TermsOfUsePage'));
 
-export type Page = 'home' | 'login' | 'register' | 'english-modules' | 'professor-dashboard' | 'student-dashboard' | 'adm-dashboard';
+export type Page =
+  | 'home'
+  | 'login'
+  | 'register'
+  | 'english-modules'
+  | 'professor-dashboard'
+  | 'student-dashboard'
+  | 'adm-dashboard'
+  | 'privacy-policy'
+  | 'terms-of-use';
 
 function AppLoading() {
   return (
@@ -85,6 +96,11 @@ function App() {
         return <StudentDashboard key="student-dashboard" {...pageProps} />;
       case 'adm-dashboard':
         return <AdmDashboard key="adm-dashboard" {...pageProps} />;
+           case 'privacy-policy':
+        return <PrivacyPolicyPage key="privacy-policy" navigateTo={navigateTo} />;
+
+      case 'terms-of-use':
+        return <TermsOfUsePage key="terms-of-use" navigateTo={navigateTo} />;
       default:
         return <HomePage key="home" navigateTo={navigateTo} />;
     }
