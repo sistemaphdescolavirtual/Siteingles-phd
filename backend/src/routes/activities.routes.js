@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabaseAdmin } from '../config/supabase.js';
+import { supabaseAdmin, supabaseAuth } from '../config/supabase.js';
 import { randomUUID } from 'node:crypto';
 
 const router = Router();
@@ -52,7 +52,91 @@ function normalizeStorageFileName(fileName) {
   return normalized || 'arquivo';
 }
 
+function getBearerToken(req) {
+  const authorization = req.headers.authorization;
 
+  if (!authorization) {
+    return null;
+  }
+
+  const [type, token] = authorization.split(' ');
+
+  if (type !== 'Bearer' || !token) {
+    return null;
+  }
+
+  return token.trim();
+}
+
+async function requireAuthenticated(req, res, next) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Token de autenticação não enviado.',
+      });
+    }
+
+    const { data: authData, error: authError } =
+      await supabaseAuth.auth.getUser(token);
+
+    if (authError || !authData?.user) {
+      console.error('Token inválido em activities:', authError);
+
+      return res.status(401).json({
+        error: 'Token inválido ou expirado.',
+        details: authError?.message,
+      });
+    }
+
+    const { data: publicUser, error: publicUserError } =
+      await supabaseAdmin
+        .from('users')
+        .select('id, role, status, nome, email, professor_id')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+    if (publicUserError) {
+      console.error(
+        'Erro ao buscar usuário autenticado em activities:',
+        publicUserError,
+      );
+
+      return res.status(500).json({
+        error: 'Erro ao validar usuário autenticado.',
+        details: publicUserError.message,
+      });
+    }
+
+    if (!publicUser) {
+      return res.status(404).json({
+        error: 'Usuário autenticado não encontrado.',
+      });
+    }
+
+    if (publicUser.status !== 'aprovado') {
+      return res.status(403).json({
+        error: 'Usuário não aprovado para acessar este recurso.',
+      });
+    }
+
+    req.authUser = publicUser;
+
+    return next();
+  } catch (error) {
+    console.error('Erro inesperado ao autenticar activities:', error);
+
+    return res.status(500).json({
+      error: 'Erro interno ao autenticar usuário.',
+      details: error.message,
+    });
+  }
+}
+
+function isManager(user) {
+  return ['gestor', 'admin'].includes(user?.role);
+}
 
 
 const activitySelect = `
@@ -119,6 +203,8 @@ function mapActivity(activity) {
   };
 }
 
+router.use(requireAuthenticated);
+
 router.get('/student/:studentId', async (req, res) => {
   try {
     const studentId = String(req.params.studentId ?? '').trim();
@@ -127,6 +213,54 @@ router.get('/student/:studentId', async (req, res) => {
       return res.status(400).json({
         error: 'ID do aluno é obrigatório.',
       });
+
+          const authUser = req.authUser;
+
+    if (authUser.role === 'aluno' && authUser.id !== studentId) {
+      return res.status(403).json({
+        error: 'Você só pode acessar suas próprias atividades.',
+      });
+    }
+
+    if (authUser.role === 'professor') {
+      const { data: student, error: studentError } =
+        await supabaseAdmin
+          .from('users')
+          .select('id, professor_id')
+          .eq('id', studentId)
+          .eq('role', 'aluno')
+          .maybeSingle();
+
+      if (studentError) {
+        console.error('Erro ao validar aluno da atividade:', studentError);
+
+        return res.status(500).json({
+          error: 'Erro ao validar aluno.',
+          details: studentError.message,
+        });
+      }
+
+      if (!student) {
+        return res.status(404).json({
+          error: 'Aluno não encontrado.',
+        });
+      }
+
+      if (student.professor_id !== authUser.id) {
+        return res.status(403).json({
+          error: 'Este aluno não pertence a este professor.',
+        });
+      }
+    }
+
+    if (
+      !['aluno', 'professor'].includes(authUser.role) &&
+      !isManager(authUser)
+    ) {
+      return res.status(403).json({
+        error: 'Perfil sem permissão para acessar atividades do aluno.',
+      });
+    }
     }
 
     const { data, error } = await supabaseAdmin
@@ -165,6 +299,25 @@ router.get('/professor/:professorId', async (req, res) => {
         error: 'ID do professor é obrigatório.',
       });
     }
+        const authUser = req.authUser;
+
+    if (authUser.role === 'professor' && authUser.id !== professorId) {
+      return res.status(403).json({
+        error: 'Você só pode acessar suas próprias atividades.',
+      });
+    }
+
+    if (authUser.role === 'aluno') {
+      return res.status(403).json({
+        error: 'Alunos não podem acessar atividades por professor.',
+      });
+    }
+
+    if (authUser.role !== 'professor' && !isManager(authUser)) {
+      return res.status(403).json({
+        error: 'Perfil sem permissão para acessar atividades do professor.',
+      });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('activities')
@@ -194,7 +347,7 @@ router.get('/professor/:professorId', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const professorId = String(req.body.professorId ?? '').trim();
+    const professorId = String(req.authUser?.id ?? '').trim();
     const alunoId = String(req.body.alunoId ?? '').trim();
     const curso = String(req.body.curso ?? '').trim().toLowerCase();
     const titulo = String(req.body.titulo ?? '').trim();
@@ -231,6 +384,11 @@ if (dueAt && dueAt <= publishAt) {
     if (!professorId || !alunoId || !curso || !titulo || !descricao) {
       return res.status(400).json({
         error: 'Professor, aluno, curso, título e descrição são obrigatórios.',
+      });
+    }
+        if (req.authUser.role !== 'professor') {
+      return res.status(403).json({
+        error: 'Apenas professores podem criar atividades.',
       });
     }
 
@@ -379,7 +537,7 @@ router.get(
       ).trim();
 
       const userId = String(
-        req.query.userId ?? '',
+        req.authUser?.id ?? '',
       ).trim();
 
       if (!activityId || !attachmentId || !userId) {
@@ -419,16 +577,7 @@ router.get(
         });
       }
 
-      if (attachment.tipo === 'link') {
-        return res.status(200).json({
-          attachmentId: attachment.id,
-          fileName: attachment.nome,
-          tipo: attachment.tipo,
-          viewUrl: attachment.url,
-          downloadUrl: null,
-          expiresIn: null,
-        });
-      }
+   
 
       const {
         data: activity,
@@ -457,40 +606,30 @@ router.get(
         });
       }
 
-            const {
-        data: requestingUser,
-        error: requestingUserError,
-      } = await supabaseAdmin
-        .from('users')
-        .select('id, role, status')
-        .eq('id', userId)
-        .maybeSingle();
+     const requestingUser = req.authUser;
 
-      if (requestingUserError) {
-        console.error(
-          'Erro ao validar usuário solicitante:',
-          requestingUserError,
-        );
-
-        return res.status(500).json({
-          error: 'Erro ao validar usuário solicitante.',
-          details: requestingUserError.message,
-        });
-      }
-
-      const isGestor =
-        requestingUser?.status === 'aprovado' &&
-        ['gestor', 'admin'].includes(requestingUser.role);
+      const isGestor = isManager(requestingUser);
 
       const canAccess =
         activity.aluno_id === userId ||
         activity.professor_id === userId ||
         isGestor;
 
-      if (!canAccess) {
+            if (!canAccess) {
         return res.status(403).json({
           error:
             'Você não possui acesso a este arquivo.',
+        });
+      }
+
+      if (attachment.tipo === 'link') {
+        return res.status(200).json({
+          attachmentId: attachment.id,
+          fileName: attachment.nome,
+          tipo: attachment.tipo,
+          viewUrl: attachment.url,
+          downloadUrl: null,
+          expiresIn: null,
         });
       }
 
@@ -556,13 +695,18 @@ router.get(
 router.post('/:activityId/attachments/upload-url', async (req, res) => {
   try {
     const activityId = String(req.params.activityId ?? '').trim();
-    const professorId = String(req.body.professorId ?? '').trim();
+    const professorId = String(req.authUser?.id ?? '').trim();
     const fileName = String(req.body.fileName ?? '').trim();
     const fileSize = Number(req.body.fileSize ?? 0);
 
     if (!activityId || !professorId || !fileName) {
       return res.status(400).json({
         error: 'Atividade, professor e nome do arquivo são obrigatórios.',
+      });
+    }
+        if (req.authUser.role !== 'professor') {
+      return res.status(403).json({
+        error: 'Apenas professores podem enviar anexos.',
       });
     }
 
@@ -684,13 +828,19 @@ router.post('/:activityId/attachments/upload-url', async (req, res) => {
 router.post('/:activityId/attachments/confirm', async (req, res) => {
   try {
     const activityId = String(req.params.activityId ?? '').trim();
-    const professorId = String(req.body.professorId ?? '').trim();
+        const professorId = String(req.authUser?.id ?? '').trim();
     const path = String(req.body.path ?? '').trim();
     const fileName = String(req.body.fileName ?? '').trim();
 
     if (!activityId || !professorId || !path || !fileName) {
       return res.status(400).json({
         error: 'Dados do anexo incompletos.',
+      });
+    }
+
+        if (req.authUser.role !== 'professor') {
+      return res.status(403).json({
+        error: 'Apenas professores podem confirmar anexos.',
       });
     }
 
@@ -815,13 +965,19 @@ router.post('/:activityId/attachments/confirm', async (req, res) => {
 router.post('/:activityId/response', async (req, res) => {
   try {
     const activityId = String(req.params.activityId ?? '').trim();
-    const alunoId = String(req.body.alunoId ?? '').trim();
+       const alunoId = String(req.authUser?.id ?? '').trim();
     const tipo = String(req.body.tipo ?? 'texto').trim().toLowerCase();
     const conteudo = String(req.body.conteudo ?? '').trim();
 
     if (!activityId || !alunoId || !conteudo) {
       return res.status(400).json({
         error: 'Atividade, aluno e resposta são obrigatórios.',
+      });
+    }
+  
+      if (req.authUser.role !== 'aluno') {
+      return res.status(403).json({
+        error: 'Apenas alunos podem responder atividades.',
       });
     }
 
@@ -988,13 +1144,19 @@ router.post('/:activityId/response', async (req, res) => {
 router.patch('/:activityId/correction', async (req, res) => {
   try {
     const activityId = String(req.params.activityId ?? '').trim();
-    const professorId = String(req.body.professorId ?? '').trim();
+    const professorId = String(req.authUser?.id ?? '').trim();
     const correctionStatus = String(req.body.correctionStatus ?? '').trim();
     const correctionFeedback = String(req.body.correctionFeedback ?? '').trim();
 
     if (!activityId || !professorId || !correctionStatus) {
       return res.status(400).json({
         error: 'Atividade, professor e status da correção são obrigatórios.',
+      });
+    }
+
+    if (req.authUser.role !== 'professor') {
+      return res.status(403).json({
+        error: 'Apenas professores podem corrigir atividades.',
       });
     }
 
