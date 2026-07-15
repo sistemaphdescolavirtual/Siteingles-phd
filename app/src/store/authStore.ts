@@ -207,8 +207,13 @@ export const useAuthStore = create<AuthState>()(
         return { success: false, message: 'Perfil inválido' };
       },
 
-      logout: () => {
-        set({ currentUser: null, isAuthenticated: false });
+            logout: () => {
+        localStorage.removeItem('authSession');
+
+        set({
+          currentUser: null,
+          isAuthenticated: false,
+        });
       },
 
       aprovarAluno: (alunoId) => {

@@ -14,6 +14,9 @@ import chatRouter from './routes/chat.routes.js';
 import adminRouter from './routes/admin.routes.js';
 const app = express();
 
+
+app.disable('x-powered-by');
+
 const port = Number(process.env.PORT) || 3001;
 const configuredFrontendUrls = String( process.env.FRONTEND_URLS ?? process.env.FRONTEND_URL ?? '',).split(',').map((url) => url.trim()).filter(Boolean);
 
@@ -25,26 +28,12 @@ const allowedOrigins = new Set([
 ]);
 
 function isAllowedOrigin(origin) {
-  if (!origin){
-     return true;
-}
-if (allowedOrigins.has(origin)) {
-  return true;
-}
-try{
-  const url = new URL(origin);
+  if (!origin) {
+    return true;
+  }
 
-  return (
-        url.protocol === 'https:' &&
-      url.hostname.endsWith('.vercel.app')    
-  );
-
-}catch {
-  return false;
+  return allowedOrigins.has(origin);
 }
-
-}
-
 
 
 app.use(

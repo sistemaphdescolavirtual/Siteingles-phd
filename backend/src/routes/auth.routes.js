@@ -140,8 +140,6 @@ router.get('/professor/:codigo', async (req, res) => {
 
 router.post('/register', async (req, res) => {
   try {
-    console.log('Recebi tentativa de cadastro:', req.body);
-
     const nome = normalizeText(req.body.nome);
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password ?? '');
@@ -295,8 +293,6 @@ return res.status(201).json({
 
 router.post('/login', async (req, res) => {
   try {
-    console.log('Recebi tentativa de login:', req.body);
-
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password ?? '');
 
@@ -315,9 +311,8 @@ router.post('/login', async (req, res) => {
     if (loginError) {
       console.error('Erro no login do Supabase Auth:', loginError);
 
-      return res.status(401).json({
+          return res.status(401).json({
         error: 'Email ou senha inválidos.',
-        details: loginError.message,
       });
     }
 
@@ -340,9 +335,14 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    if (publicUser.status === 'rejeitado') {
+        if (publicUser.status !== 'aprovado') {
+      const message =
+        publicUser.status === 'pendente'
+          ? 'Seu cadastro ainda está aguardando aprovação.'
+          : 'Este cadastro não está ativo.';
+
       return res.status(403).json({
-        error: 'Este cadastro foi rejeitado.',
+        error: message,
       });
     }
 

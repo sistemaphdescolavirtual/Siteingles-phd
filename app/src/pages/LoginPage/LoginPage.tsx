@@ -128,14 +128,7 @@ export default function LoginPage({ navigateTo }: LoginPageProps) {
               <button onClick={() => navigateTo('register')} className="text-brand-green hover:underline font-medium">Cadastre-se</button>
             </p>
           </div>
-
-          <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-xs text-gray-500 mb-2 font-medium">Credenciais de demonstração:</p>
-            <div className="space-y-1 text-xs text-gray-600">
-              <p><span className="text-gray-400">Professor:</span> professor@phdescolavirtual.com.br / qualquer senha</p>
-              <p><span className="text-gray-400">Aluno:</span> Crie uma conta como aluno</p>
-            </div>
-          </div>
+          
         </motion.div>
       </div>
     </div>
