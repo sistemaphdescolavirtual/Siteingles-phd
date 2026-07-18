@@ -32,7 +32,7 @@ export default function ProfessorDashboard({ onLogout }: ProfessorDashboardProps
     searchTerm, setSearchTerm,
     currentUser,
     pendingNotifications, resolvedNotifications,
-    atividades, alunosPorCurso, filteredAlunos, atividadesPorCurso,
+    atividades, alunosPorCurso, alunosVetados, filteredAlunos, atividadesPorCurso,
     getAlunoById,
     handleAprovar, handleRejeitar,
     handleActivityClick,
@@ -250,6 +250,18 @@ recarregarDados,
                           <div className="flex flex-wrap gap-4 pt-8 border-t border-white/5 mt-6">
                             <Button onClick={() => setShowCreateActivity(true)} className="flex-1 h-14 bg-brand-green hover:bg-emerald-600 text-black font-black rounded-2xl transition-all cursor-pointer"><Plus className="w-5 h-5 mr-2" /> Nova Atividade</Button>
                             <Button onClick={() => handleChatClick(selectedAluno.id)} variant="outline" className="flex-1 h-14 border-white/10 text-white hover:bg-white/5 rounded-2xl transition-all cursor-pointer"><MessageSquare className="w-5 h-5 mr-2" /> Abrir Chat</Button>
+                            <Button
+                              onClick={() => {
+                                if (window.confirm(`Deseja vetar o aluno ${selectedAluno.nome}? Ele perderá o acesso à plataforma.`)) {
+                                  handleRejeitar(selectedAluno.id);
+                                  setSelectedAluno(null);
+                                }
+                              }}
+                              variant="outline"
+                              className="h-14 border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all cursor-pointer"
+                            >
+                              Vetar aluno
+                            </Button>
                           </div>
                         </motion.div>
                       ) : (
@@ -276,6 +288,36 @@ recarregarDados,
                     </motion.button>
                   ))}
                 </div>
+                {alunosVetados.length > 0 && (
+                  <div className="glass-panel rounded-3xl border border-red-500/15 overflow-hidden mt-8">
+                    <div className="px-6 py-4 border-b border-white/5">
+                      <h3 className="font-bold text-red-400">Alunos vetados ({alunosVetados.length})</h3>
+                      <p className="text-xs text-gray-500 mt-1">Eles não conseguem entrar nem usar atividades, chat ou notificações.</p>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                      {alunosVetados.map((aluno: User) => (
+                        <div key={aluno.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                          <Avatar nome={aluno.nome} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm">{aluno.nome}</p>
+                            <p className="text-xs text-gray-500 truncate">{aluno.email}</p>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              if (window.confirm(`Deseja desvetar o aluno ${aluno.nome}? O acesso será restaurado.`)) {
+                                handleAprovar(aluno.id);
+                              }
+                            }}
+                            variant="outline"
+                            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 rounded-xl cursor-pointer"
+                          >
+                            Desvetar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
             <ProfessorCodeCard codigo={currentUser?.codigo} />

@@ -55,10 +55,20 @@ async function request<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
+  let accessToken: string | null = null;
+
+  try {
+    const session = JSON.parse(localStorage.getItem('authSession') ?? 'null');
+    accessToken = typeof session?.access_token === 'string' ? session.access_token : null;
+  } catch {
+    accessToken = null;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(options?.headers ?? {}),
     },
   });
@@ -125,8 +135,12 @@ setNotifications(notificationsData);
     void recarregarDados();
   }, [currentUser?.id, currentUser?.role]);
 
-   const alunosAprovados = alunosReais.filter(
+  const alunosAprovados = alunosReais.filter(
     (aluno) => aluno.status === 'aprovado',
+  );
+
+  const alunosVetados = alunosReais.filter(
+    (aluno) => aluno.status === 'rejeitado',
   );
 
   const pendingNotifications = notifications.filter(
@@ -386,6 +400,7 @@ const handleNotificationClick = async (
     resolvedNotifications,
 
     alunos: alunosAprovados,
+    alunosVetados,
     atividades,
 
     alunosPorCurso,

@@ -1,8 +1,96 @@
-
 import { Router } from 'express';
-import { supabaseAdmin } from '../config/supabase.js';
+import {
+  supabaseAdmin,
+  supabaseAuth,
+} from '../config/supabase.js';
 
 const router = Router();
+
+function getBearerToken(req) {
+  const [type, token] = String(
+    req.headers.authorization ?? '',
+  ).split(' ');
+
+  return type === 'Bearer' && token
+    ? token.trim()
+    : null;
+}
+
+async function requireApprovedProfessor(req, res, next) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Token de autenticação não enviado.',
+      });
+    }
+
+    const {
+      data: authData,
+      error: authError,
+    } = await supabaseAuth.auth.getUser(token);
+
+    if (authError || !authData?.user) {
+      return res.status(401).json({
+        error: 'Token inválido ou expirado.',
+      });
+    }
+
+    const {
+      data: professor,
+      error,
+    } = await supabaseAdmin
+      .from('users')
+      .select('id, role, status')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+
+    if (error) {
+      return res.status(500).json({
+        error: 'Erro ao validar o professor autenticado.',
+        details: error.message,
+      });
+    }
+
+    if (
+      !professor ||
+      professor.role !== 'professor' ||
+      professor.status !== 'aprovado'
+    ) {
+      return res.status(403).json({
+        error:
+          'Apenas professores aprovados podem acessar esta rota.',
+      });
+    }
+
+    const professorId = String(
+      req.params.professorId ?? '',
+    ).trim();
+
+    if (professorId !== professor.id) {
+      return res.status(403).json({
+        error:
+          'Você não pode gerenciar alunos de outro professor.',
+      });
+    }
+
+    req.professorUser = professor;
+
+    return next();
+  } catch (error) {
+    return res.status(500).json({
+      error:
+        'Erro interno ao validar o acesso do professor.',
+      details: error.message,
+    });
+  }
+}
+
+router.use(
+  '/:professorId',
+  requireApprovedProfessor,
+);
 
 const publicUserSelect = `
   id,
@@ -21,159 +109,207 @@ const publicUserSelect = `
   updated_at
 `;
 
-router.get('/:professorId/students', async (req, res) => {
-  try {
-    const professorId = String(req.params.professorId ?? '').trim();
+router.get(
+  '/:professorId/students',
+  async (req, res) => {
+    try {
+      const professorId = String(
+        req.params.professorId ?? '',
+      ).trim();
 
-    if (!professorId) {
-      return res.status(400).json({
-        error: 'ID do professor é obrigatório.',
-      });
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .select(publicUserSelect)
-      .eq('role', 'aluno')
-      .eq('professor_id', professorId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Erro ao buscar alunos do professor:', error);
-
-      return res.status(500).json({
-        error: 'Não foi possível buscar os alunos do professor.',
-        details: error.message,
-      });
-    }
-
-    return res.status(200).json(data ?? []);
-  } catch (error) {
-    console.error('Erro inesperado ao buscar alunos:', error);
-
-    return res.status(500).json({
-      error: 'Erro interno ao buscar alunos.',
-      details: error.message,
-    });
-  }
-});
-
-router.patch('/:professorId/students/:studentId/status', async (req, res) => {
-  try {
-    const professorId = String(req.params.professorId ?? '').trim();
-    const studentId = String(req.params.studentId ?? '').trim();
-    const status = String(req.body.status ?? '').trim().toLowerCase();
-
-    if (!professorId || !studentId) {
-      return res.status(400).json({
-        error: 'ID do professor e ID do aluno são obrigatórios.',
-      });
-    }
-
-    if (!['aprovado', 'rejeitado'].includes(status)) {
-      return res.status(400).json({
-        error: 'Status inválido. Use aprovado ou rejeitado.',
-      });
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .update({ status })
-      .eq('id', studentId)
-      .eq('professor_id', professorId)
-      .eq('role', 'aluno')
-      .select(publicUserSelect)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Erro ao atualizar status do aluno:', error);
-
-      return res.status(500).json({
-        error: 'Não foi possível atualizar o status do aluno.',
-        details: error.message,
-      });
-    }
-
-    if (!data) {
-  return res.status(404).json({
-    error: 'Aluno não encontrado para este professor.',
-  });
-}
-
-const { error: resolveNotificationError } =
-  await supabaseAdmin
-    .from('notifications')
-    .update({
-      read: true,
-      resolved: true,
-      resolution: status,
-    })
-    .eq('user_id', professorId)
-    .eq('type', 'autorizacao')
-    .contains('data', {
-      alunoId: studentId,
-    })
-    .eq('resolved', false);
-
-if (resolveNotificationError) {
-  console.error(
-    'Aluno atualizado, mas houve erro ao resolver notificação:',
-    resolveNotificationError,
-  );
-}
-
-const studentNotification =
-  status === 'aprovado'
-    ? {
-        title: 'Aprovação concedida!',
-        message:
-          'Você foi aprovado e agora tem acesso completo à plataforma.',
+      if (!professorId) {
+        return res.status(400).json({
+          error: 'ID do professor é obrigatório.',
+        });
       }
-    : {
-        title: 'Solicitação rejeitada',
+
+      const {
+        data,
+        error,
+      } = await supabaseAdmin
+        .from('users')
+        .select(publicUserSelect)
+        .eq('role', 'aluno')
+        .eq('professor_id', professorId)
+        .order('created_at', {
+          ascending: false,
+        });
+
+      if (error) {
+        console.error(
+          'Erro ao buscar alunos do professor:',
+          error,
+        );
+
+        return res.status(500).json({
+          error:
+            'Não foi possível buscar os alunos do professor.',
+          details: error.message,
+        });
+      }
+
+      return res.status(200).json(data ?? []);
+    } catch (error) {
+      console.error(
+        'Erro inesperado ao buscar alunos:',
+        error,
+      );
+
+      return res.status(500).json({
+        error: 'Erro interno ao buscar alunos.',
+        details: error.message,
+      });
+    }
+  },
+);
+
+router.patch(
+  '/:professorId/students/:studentId/status',
+  async (req, res) => {
+    try {
+      const professorId = String(
+        req.params.professorId ?? '',
+      ).trim();
+
+      const studentId = String(
+        req.params.studentId ?? '',
+      ).trim();
+
+      const status = String(
+        req.body.status ?? '',
+      )
+        .trim()
+        .toLowerCase();
+
+      if (!professorId || !studentId) {
+        return res.status(400).json({
+          error:
+            'ID do professor e ID do aluno são obrigatórios.',
+        });
+      }
+
+      if (
+        !['aprovado', 'rejeitado'].includes(status)
+      ) {
+        return res.status(400).json({
+          error:
+            'Status inválido. Use aprovado ou rejeitado.',
+        });
+      }
+
+      const {
+        data,
+        error,
+      } = await supabaseAdmin
+        .from('users')
+        .update({
+          status,
+        })
+        .eq('id', studentId)
+        .eq('professor_id', professorId)
+        .eq('role', 'aluno')
+        .select(publicUserSelect)
+        .maybeSingle();
+
+      if (error) {
+        console.error(
+          'Erro ao atualizar status do aluno:',
+          error,
+        );
+
+        return res.status(500).json({
+          error:
+            'Não foi possível atualizar o status do aluno.',
+          details: error.message,
+        });
+      }
+
+      if (!data) {
+        return res.status(404).json({
+          error:
+            'Aluno não encontrado para este professor.',
+        });
+      }
+
+      const {
+        error: resolveNotificationError,
+      } = await supabaseAdmin
+        .from('notifications')
+        .update({
+          read: true,
+          resolved: true,
+          resolution: status,
+        })
+        .eq('user_id', professorId)
+        .eq('type', 'autorizacao')
+        .contains('data', {
+          alunoId: studentId,
+        })
+        .eq('resolved', false);
+
+      if (resolveNotificationError) {
+        console.error(
+          'Aluno atualizado, mas houve erro ao resolver a notificação:',
+          resolveNotificationError,
+        );
+      }
+
+      const studentNotification =
+        status === 'aprovado'
+          ? {
+              title: 'Aprovação concedida!',
+              message:
+                'Você foi aprovado e agora tem acesso completo à plataforma.',
+            }
+          : {
+              title: 'Solicitação rejeitada',
+              message:
+                'Sua solicitação foi rejeitada. Entre em contato com o professor para mais informações.',
+            };
+
+      const {
+        error: studentNotificationError,
+      } = await supabaseAdmin
+        .from('notifications')
+        .insert({
+          user_id: studentId,
+          title: studentNotification.title,
+          message: studentNotification.message,
+          type: 'sistema',
+          read: false,
+          resolved: false,
+          data: {
+            professorId,
+            status,
+          },
+        });
+
+      if (studentNotificationError) {
+        console.error(
+          'Aluno atualizado, mas houve erro ao notificá-lo:',
+          studentNotificationError,
+        );
+      }
+
+      return res.status(200).json({
         message:
-          'Sua solicitação foi rejeitada. Entre em contato com o professor para mais informações.',
-      };
+          status === 'aprovado'
+            ? 'Aluno aprovado com sucesso.'
+            : 'Aluno rejeitado com sucesso.',
+        user: data,
+      });
+    } catch (error) {
+      console.error(
+        'Erro inesperado ao atualizar aluno:',
+        error,
+      );
 
-const { error: studentNotificationError } =
-  await supabaseAdmin
-    .from('notifications')
-    .insert({
-      user_id: studentId,
-      title: studentNotification.title,
-      message: studentNotification.message,
-      type: 'sistema',
-      read: false,
-      resolved: false,
-      data: {
-        professorId,
-        status,
-      },
-    });
-
-if (studentNotificationError) {
-  console.error(
-    'Aluno atualizado, mas houve erro ao notificá-lo:',
-    studentNotificationError,
-  );
-}
-
-return res.status(200).json({
-  message:
-    status === 'aprovado'
-      ? 'Aluno aprovado com sucesso.'
-      : 'Aluno rejeitado com sucesso.',
-  user: data,
-});
-
-  } catch (error) {
-    console.error('Erro inesperado ao atualizar aluno:', error);
-
-    return res.status(500).json({
-      error: 'Erro interno ao atualizar aluno.',
-      details: error.message,
-    });
-  }
-});
+      return res.status(500).json({
+        error: 'Erro interno ao atualizar aluno.',
+        details: error.message,
+      });
+    }
+  },
+);
 
 export default router;

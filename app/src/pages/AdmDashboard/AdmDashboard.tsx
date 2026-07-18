@@ -38,7 +38,7 @@ function StatusBadge({ status }: { status: User['status'] }) {
     pendente: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     rejeitado: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
-  const label = { aprovado: 'Aprovado', pendente: 'Pendente', rejeitado: 'Rejeitado' };
+  const label = { aprovado: 'Aprovado', pendente: 'Pendente', rejeitado: 'Vetado' };
   return (
     <Badge className={`${map[status]} uppercase tracking-widest px-2 py-0.5 font-black text-[9px] w-fit border`}>
       {label[status]}
@@ -61,7 +61,7 @@ function UserStatusActions({
   const handleAprovar = (event: any) => {
     event.stopPropagation();
 
-    const acao = user.status === 'rejeitado' ? 'reativar' : 'aprovar';
+    const acao = user.status === 'rejeitado' ? 'desvetar' : 'aprovar';
 
     const confirmed = window.confirm(
       `Deseja ${acao} ${label === 'aluno' ? 'o aluno' : 'o professor'} ${user.nome}?`,
@@ -104,7 +104,7 @@ function UserStatusActions({
           onClick={handleAprovar}
           className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-all cursor-pointer"
         >
-          Reativar
+          Desvetar
         </button>
       </div>
     );

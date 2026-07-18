@@ -69,7 +69,7 @@ export function useAdmDashboard() {
 
   // Métricas globais
   const metrics = {
-    professoresAtivos: professores.length,
+    professoresAtivos: professores.filter(p => p.status === 'aprovado').length,
     alunosAtivos: todosAlunos.filter(a => a.status === 'aprovado').length,
     alunosPendentes: todosAlunos.filter(a => a.status === 'pendente').length,
     atividadesPendentes: todasAtividades.filter(a => a.correctionStatus === 'pendente').length,
@@ -165,8 +165,18 @@ export function useAdmDashboard() {
         ),
       );
 
+      setProfessores((professoresAtuais) =>
+        professoresAtuais.map((professor) =>
+          professor.id === alunoAtualizado.id ? alunoAtualizado : professor,
+        ),
+      );
+
       if (selectedAluno?.id === alunoAtualizado.id) {
         setSelectedAluno(alunoAtualizado);
+      }
+
+      if (selectedProfessor?.id === alunoAtualizado.id) {
+        setSelectedProfessor(alunoAtualizado);
       }
 
       await recarregarDados();
