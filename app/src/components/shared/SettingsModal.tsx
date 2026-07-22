@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, X, User, Mail, Lock, Camera, Shield, AlertTriangle } from 'lucide-react';
+import { api } from '@/services/api';
+import { useAuthStore } from '@/store/authStore';
+import type { User as AuthUser } from '@/types';
+
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: {
-    nome?: string;
-    email?: string;
-    role?: string | null;
-    codigo?: string;
-  } | null;
+  onLogout?: () => void;
+  currentUser: AuthUser | null;
 }
 
 const roleLabel: Record<string, string> = {
@@ -31,12 +31,32 @@ const accentColor: Record<string, string> = {
   aluno: 'from-purple-500 to-pink-500',
 };
 
-export function SettingsModal({ isOpen, onClose, currentUser }: SettingsModalProps) {
+export function SettingsModal({
+  isOpen,
+  onClose,
+  onLogout,
+  currentUser,
+}: SettingsModalProps) {
   const [nome, setNome] = useState(currentUser?.nome ?? '');
   const [email, setEmail] = useState(currentUser?.email ?? '');
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setNome(currentUser?.nome ?? '');
+    setEmail(currentUser?.email ?? '');
+    setSenhaAtual('');
+    setNovaSenha('');
+    setSaved(false);
+    setError('');
+  }, [isOpen, currentUser]);
 
   const role: string = currentUser?.role ?? 'aluno';
   const initials = (currentUser?.nome ?? 'U')
@@ -46,12 +66,84 @@ export function SettingsModal({ isOpen, onClose, currentUser }: SettingsModalPro
     .join('')
     .toUpperCase();
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      onClose();
-    }, 1200);
+  const handleSave = async () => {
+    if (!currentUser) {
+      setError('Usuário não encontrado. Entre novamente.');
+      return;
+    }
+
+    const cleanName = nome.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const sensitiveChange =
+      cleanEmail !== currentUser.email ||
+      Boolean(novaSenha);
+
+    if (cleanName.length < 3) {
+      setError('O nome precisa ter pelo menos 3 caracteres.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Informe um e-mail válido.');
+      return;
+    }
+
+    if (
+      novaSenha &&
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/.test(
+        novaSenha,
+      )
+    ) {
+      setError(
+        'A nova senha deve ter 8 caracteres, com maiúscula, minúscula, número e símbolo.',
+      );
+      return;
+    }
+
+    if (sensitiveChange && !senhaAtual) {
+      setError(
+        'Informe sua senha atual para alterar e-mail ou senha.',
+      );
+      return;
+    }
+
+    try {
+      setError('');
+      setIsSaving(true);
+
+      const result = await api.updateProfile({
+        nome: cleanName,
+        email: cleanEmail,
+        currentPassword: senhaAtual || undefined,
+        newPassword: novaSenha || undefined,
+      });
+
+      useAuthStore.setState({
+        currentUser: result.user,
+      });
+
+      if (result.requiresLogin) {
+        window.alert(result.message);
+        onLogout?.();
+        onClose();
+        return;
+      }
+
+      setSaved(true);
+
+      setTimeout(() => {
+        setSaved(false);
+        onClose();
+      }, 1200);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Não foi possível salvar as alterações.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -174,6 +266,16 @@ export function SettingsModal({ isOpen, onClose, currentUser }: SettingsModalPro
                     type="password"
                     placeholder="••••••••"
                   />
+
+                 <p className="mt-3 text-[10px] leading-relaxed text-gray-600">
+                  Para alterar e-mail ou senha, confirme sua senha atual. Depois da alteração, será necessário entrar novamente.
+                </p>
+
+                {error && (
+                  <p className="mt-3 rounded-[11px] border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-400">
+                    {error}
+                  </p>
+                )}
                 </div>
               </div>
             </div>
@@ -192,10 +294,13 @@ export function SettingsModal({ isOpen, onClose, currentUser }: SettingsModalPro
               </button>
               <motion.button
                 onClick={handleSave}
+                disabled={isSaving}
                 whileTap={{ scale: 0.97 }}
-                className="ml-auto flex items-center gap-2 px-5 py-2 rounded-[11px] bg-brand-green text-black text-[12px] font-bold hover:bg-brand-neon transition-all cursor-pointer"
+                className="ml-auto flex items-center gap-2 px-5 py-2 rounded-[11px] bg-brand-green text-black text-[12px] font-bold hover:bg-brand-neon transition-all cursor-pointer  disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {saved ? (
+              {isSaving ? (
+                  <>Salvando...</>
+                ) : saved ? (
                   <>✓ Salvo!</>
                 ) : (
                   <>Salvar alterações</>

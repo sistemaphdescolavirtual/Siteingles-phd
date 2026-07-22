@@ -11,6 +11,26 @@ function normalizeText(value) {
   return String(value ?? '').trim();
 }
 
+function getBearerToken(req) {
+  const [type, token] = String(
+    req.headers.authorization ?? '',
+  ).split(' ');
+
+  return type === 'Bearer' && token
+    ? token.trim()
+    : null;
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isStrongPassword(password) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/.test(
+    password,
+  );
+}
+
 function generateProfessorCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = 'PROF-';
@@ -94,6 +114,51 @@ async function getPublicUserById(userId) {
   return data;
 }
 
+async function requireAuthenticatedUser(req, res, next) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Token de autenticação não enviado.',
+      });
+    }
+
+    const { data: authData, error: authError } =
+      await supabaseAuth.auth.getUser(token);
+
+    if (authError || !authData?.user) {
+      return res.status(401).json({
+        error: 'Token inválido ou expirado.',
+      });
+    }
+
+    const publicUser = await getPublicUserById(
+      authData.user.id,
+    );
+
+    if (publicUser.status !== 'aprovado') {
+      return res.status(403).json({
+        error: 'Este cadastro não está ativo.',
+      });
+    }
+
+    req.authUser = authData.user;
+    req.publicUser = publicUser;
+
+    return next();
+  } catch (error) {
+    console.error(
+      'Erro ao validar usuário autenticado:',
+      error,
+    );
+
+    return res.status(500).json({
+      error: 'Erro interno ao validar o usuário.',
+    });
+  }
+}
+
 router.get('/ping', (_req, res) => {
   return res.status(200).json({
     ok: true,
@@ -137,6 +202,244 @@ router.get('/professor/:codigo', async (req, res) => {
     });
   }
 });
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({
+        error: 'Informe um e-mail válido.',
+      });
+    }
+
+    const frontendUrl = String(
+      process.env.FRONTEND_URL ??
+        process.env.FRONTEND_URLS?.split(',')[0] ??
+        '',
+    )
+      .trim()
+      .replace(/\/$/, '');
+
+    if (!frontendUrl) {
+      return res.status(500).json({
+        error:
+          'A URL do frontend não foi configurada no backend.',
+      });
+    }
+
+    const { error } =
+      await supabaseAuth.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo: `${frontendUrl}/?page=reset-password`,
+        },
+      );
+
+    if (error) {
+      console.error(
+        'Erro ao solicitar recuperação de senha:',
+        error,
+      );
+
+      return res.status(400).json({
+        error:
+          'Não foi possível enviar o e-mail agora. Aguarde alguns minutos e tente novamente.',
+      });
+    }
+
+    return res.status(200).json({
+      message:
+        'Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha.',
+    });
+  } catch (error) {
+    console.error(
+      'Erro inesperado na recuperação de senha:',
+      error,
+    );
+
+    return res.status(500).json({
+      error: 'Erro interno ao solicitar recuperação de senha.',
+    });
+  }
+});
+
+
+router.patch(
+  '/profile',
+  requireAuthenticatedUser,
+  async (req, res) => {
+    try {
+      const currentUser = req.publicUser;
+      const authUser = req.authUser;
+      const nome = normalizeText(req.body.nome);
+      const email = normalizeEmail(req.body.email);
+      const currentPassword = String(
+        req.body.currentPassword ?? '',
+      );
+      const newPassword = String(
+        req.body.newPassword ?? '',
+      );
+
+      if (!nome || nome.length < 3) {
+        return res.status(400).json({
+          error: 'O nome precisa ter pelo menos 3 caracteres.',
+        });
+      }
+
+      if (!email || !isValidEmail(email)) {
+        return res.status(400).json({
+          error: 'Informe um e-mail válido.',
+        });
+      }
+
+      if (
+        newPassword &&
+        !isStrongPassword(newPassword)
+      ) {
+        return res.status(400).json({
+          error:
+            'A nova senha deve ter pelo menos 8 caracteres, com maiúscula, minúscula, número e símbolo.',
+        });
+      }
+
+      const emailChanged = email !== currentUser.email;
+      const passwordChanged = Boolean(newPassword);
+      const nameChanged = nome !== currentUser.nome;
+      const sensitiveChange =
+        emailChanged || passwordChanged;
+
+      if (!nameChanged && !sensitiveChange) {
+        return res.status(200).json({
+          message: 'Nenhuma alteração foi necessária.',
+          user: currentUser,
+          requiresLogin: false,
+        });
+      }
+
+      if (sensitiveChange) {
+        if (!currentPassword) {
+          return res.status(400).json({
+            error:
+              'Informe sua senha atual para alterar e-mail ou senha.',
+          });
+        }
+
+        const { error: passwordError } =
+          await supabaseAuth.auth.signInWithPassword({
+            email: currentUser.email,
+            password: currentPassword,
+          });
+
+        if (passwordError) {
+          return res.status(401).json({
+            error: 'A senha atual está incorreta.',
+          });
+        }
+      }
+
+      const authUpdates = {};
+
+      if (emailChanged) {
+        authUpdates.email = email;
+        authUpdates.email_confirm = true;
+      }
+
+      if (passwordChanged) {
+        authUpdates.password = newPassword;
+      }
+
+      if (nameChanged) {
+        authUpdates.user_metadata = {
+          ...(authUser.user_metadata ?? {}),
+          nome,
+        };
+      }
+
+      if (Object.keys(authUpdates).length > 0) {
+        const { error: authUpdateError } =
+          await supabaseAdmin.auth.admin.updateUserById(
+            currentUser.id,
+            authUpdates,
+          );
+
+        if (authUpdateError) {
+          const duplicateEmail =
+            /already|registered|exists/i.test(
+              authUpdateError.message,
+            );
+
+          return res.status(400).json({
+            error: duplicateEmail
+              ? 'Este e-mail já está sendo usado por outra conta.'
+              : 'Não foi possível atualizar os dados de autenticação.',
+          });
+        }
+      }
+
+      const { error: publicUpdateError } =
+        await supabaseAdmin
+          .from('users')
+          .update({ nome, email })
+          .eq('id', currentUser.id);
+
+      if (publicUpdateError) {
+        const rollback = {};
+
+        if (emailChanged) {
+          rollback.email = currentUser.email;
+          rollback.email_confirm = true;
+        }
+
+        if (passwordChanged) {
+          rollback.password = currentPassword;
+        }
+
+        if (nameChanged) {
+          rollback.user_metadata =
+            authUser.user_metadata ?? {};
+        }
+
+        if (Object.keys(rollback).length > 0) {
+          await supabaseAdmin.auth.admin.updateUserById(
+            currentUser.id,
+            rollback,
+          );
+        }
+
+        console.error(
+          'Erro ao atualizar perfil na tabela users:',
+          publicUpdateError,
+        );
+
+        return res.status(500).json({
+          error: 'Não foi possível concluir a atualização do perfil.',
+        });
+      }
+
+      const updatedUser = await getPublicUserById(
+        currentUser.id,
+      );
+
+      return res.status(200).json({
+        message: sensitiveChange
+          ? 'Dados atualizados. Entre novamente com suas novas credenciais.'
+          : 'Perfil atualizado com sucesso.',
+        user: updatedUser,
+        requiresLogin: sensitiveChange,
+      });
+    } catch (error) {
+      console.error(
+        'Erro inesperado ao atualizar perfil:',
+        error,
+      );
+
+      return res.status(500).json({
+        error: 'Erro interno ao atualizar o perfil.',
+      });
+    }
+  },
+);
 
 router.post('/register', async (req, res) => {
   try {

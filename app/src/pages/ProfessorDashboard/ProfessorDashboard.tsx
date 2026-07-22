@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/shared/Avatar';
 import { CorrectionStatusBadge } from '@/components/shared/CorrectionStatusBadge';
 import { ChatPanel } from '@/components/shared/ChatPanel';
+import { SettingsModal } from '@/components/shared/SettingsModal';
 import { NotificationItem } from './components/NotificationItem';
 import { ResolvedNotificationItem } from './components/ResolvedNotificationItem';
 import { ProfessorCodeCard } from './components/ProfessorCodeCard';
@@ -449,64 +450,9 @@ recarregarDados,
             </motion.div>
           </TabsContent>
           {/* CONFIGURAÇÕES */}
-          <TabsContent value="configuracoes" className="space-y-8">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto">
-              <div className="glass-panel rounded-[2.5rem] border border-white/10 overflow-hidden">
-                <div className="p-8 border-b border-white/5">
-                  <h2 className="text-3xl font-bold font-display flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-brand-green/10 flex items-center justify-center border border-brand-green/20">
-                      <Settings className="w-6 h-6 text-brand-green" />
-                    </div>
-                    Configurações do Perfil
-                  </h2>
-                  <p className="text-gray-500 mt-2">Gerencie seus dados pessoais e preferências</p>
-                </div>
-                <div className="p-8 space-y-6">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Nome completo</label>
-                    <input
-                      type="text"
-                      defaultValue={currentUser?.nome}
-                      className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">E-mail</label>
-                    <input
-                      type="email"
-                      defaultValue={currentUser?.email}
-                      className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text"
-                    />
-                  </div>
-                  {currentUser?.codigo && (
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Código de turma</label>
-                      <div className="flex items-center gap-3 bg-brand-green/5 border border-brand-green/15 rounded-xl px-4 py-3">
-                        <code className="font-mono text-brand-green font-bold tracking-wider flex-1">{currentUser.codigo}</code>
-                        <span className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">somente leitura</span>
-                      </div>
-                    </div>
-                  )}
-                  <div className="border-t border-white/5 pt-6">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Segurança</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Senha atual</label>
-                        <input type="password" placeholder="••••••••" className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Nova senha</label>
-                        <input type="password" placeholder="••••••••" className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white outline-none focus:border-brand-green/50 transition-colors cursor-text" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <Button className="flex-1 h-12 bg-brand-green hover:bg-emerald-600 text-black font-bold rounded-xl cursor-pointer">Salvar Alterações</Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </TabsContent>
+<TabsContent value="configuracoes" className="space-y-8">
+  <div className="min-h-[300px]" />
+</TabsContent>
         </Tabs>
       </main>
 
@@ -519,6 +465,13 @@ recarregarDados,
         onCreated={recarregarDados}
       />
       <ActivityDetailModal isOpen={showActivityDetail} onClose={() => setShowActivityDetail(false)} activity={selectedActivity} onCorrigir={handleCorrigir} />
+<SettingsModal
+  isOpen={activeTab === 'configuracoes'}
+  onClose={() => setActiveTab('turmas')}
+  onLogout={onLogout}
+  currentUser={currentUser}
+/>
+
     </div>
   );
 }

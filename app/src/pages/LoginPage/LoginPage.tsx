@@ -92,7 +92,22 @@ export default function LoginPage({ navigateTo }: LoginPageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="senha" className="text-gray-400 text-sm">Senha</Label>
+              <div className="flex items-center justify-between">
+  <Label
+    htmlFor="senha"
+    className="text-gray-400 text-sm"
+  >
+    Senha
+  </Label>
+
+  <button
+    type="button"
+    onClick={() => navigateTo('forgot-password')}
+    className="text-xs font-medium text-brand-green hover:underline"
+  >
+    Esqueci minha senha
+  </button>
+</div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
                 <Input id="senha" type={showPassword ? 'text' : 'password'} value={senha}

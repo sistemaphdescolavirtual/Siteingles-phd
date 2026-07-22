@@ -14,6 +14,15 @@ const AdmDashboard = lazy(() => import('@/pages/AdmDashboard'));
 const PrivacyPolicyPage = lazy(() => import('@/pages/LegalPages/PrivacyPolicyPage'));
 const TermsOfUsePage = lazy(() => import('@/pages/LegalPages/TermsOfUsePage'));
 
+const ForgotPasswordPage = lazy(
+  () => import('@/pages/ForgotPasswordPage'),
+);
+
+const ResetPasswordPage = lazy(
+  () => import('@/pages/ResetPasswordPage'),
+);
+
+
 export type Page =
   | 'home'
   | 'login'
@@ -22,8 +31,22 @@ export type Page =
   | 'professor-dashboard'
   | 'student-dashboard'
   | 'adm-dashboard'
+  | 'forgot-password'
+  | 'reset-password'
   | 'privacy-policy'
   | 'terms-of-use';
+
+
+function getInitialPage(): Page {
+  const page = new URLSearchParams(
+    window.location.search,
+  ).get('page');
+
+  return page === 'reset-password'
+    ? 'reset-password'
+    : 'home';
+}
+
 
 function AppLoading() {
   return (
@@ -40,7 +63,9 @@ function AppLoading() {
 
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+ const [currentPage, setCurrentPage] = useState<Page>(
+  getInitialPage,
+); 
   const { isAuthenticated, currentUser, logout } = useAuthStore();
 
   // Initialize cursor effect globally
@@ -48,12 +73,29 @@ function App() {
 
   // Handle navigation
   const navigateTo = (page: Page) => {
+        if (
+      page !== 'reset-password' &&
+      window.location.search
+    ) {
+      window.history.replaceState(
+        {},
+        '',
+        window.location.pathname,
+      );
+    }
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Auto-redirect based on auth state
+
+   
+
   useEffect(() => {
+ if (currentPage === 'reset-password') {
+      return;
+    }
+
     if (isAuthenticated && currentUser) {
       if (currentUser.role === 'professor') {
         setCurrentPage('professor-dashboard');
@@ -63,7 +105,7 @@ function App() {
         setCurrentPage('adm-dashboard');
       }
     }
-  }, [isAuthenticated, currentUser]);
+ }, [isAuthenticated, currentUser, currentPage]);
 
   // Handle logout
   const handleLogout = () => {
@@ -88,6 +130,22 @@ function App() {
         return <LoginPage key="login" navigateTo={navigateTo} />;
       case 'register':
         return <RegisterPage key="register" navigateTo={navigateTo} />;
+        case 'forgot-password':
+  return (
+    <ForgotPasswordPage
+      key="forgot-password"
+      navigateTo={navigateTo}
+    />
+  );
+
+case 'reset-password':
+  return (
+    <ResetPasswordPage
+      key="reset-password"
+      navigateTo={navigateTo}
+    />
+  );
+        
       case 'english-modules':
         return <EnglishModulesPage key="english-modules" navigateTo={navigateTo} />;
       case 'professor-dashboard':

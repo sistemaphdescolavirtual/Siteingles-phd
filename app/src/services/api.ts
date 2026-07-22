@@ -81,6 +81,13 @@ interface LoginPayload {
   password: string;
 }
 
+interface UpdateProfilePayload {
+  nome: string;
+  email: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+
 interface CreateAdminManagerPayload {
   requesterId: string;
   nome: string;
@@ -419,6 +426,35 @@ export const api = {
     return {
       message: response.message,
       user: mapApiUser(response.user),
+    };
+  },
+
+    forgotPassword: async (email: string) => {
+    return request<{ message: string }>(
+      '/auth/forgot-password',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      },
+    );
+  },
+
+  updateProfile: async (
+    payload: UpdateProfilePayload,
+  ) => {
+    const response = await request<{
+      message: string;
+      user: ApiUser;
+      requiresLogin: boolean;
+    }>('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      message: response.message,
+      user: mapApiUser(response.user),
+      requiresLogin: response.requiresLogin,
     };
   },
 

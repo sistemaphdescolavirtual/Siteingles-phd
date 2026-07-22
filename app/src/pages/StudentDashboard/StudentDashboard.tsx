@@ -397,6 +397,7 @@ export default function StudentDashboard({ onLogout }: StudentDashboardProps) {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+        onLogout={onLogout}
         currentUser={currentUser}
       />
     </div>

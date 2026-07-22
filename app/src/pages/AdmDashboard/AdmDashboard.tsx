@@ -1326,7 +1326,12 @@ export default function AdmDashboard({ onLogout }: AdmDashboardProps) {
           </TabsContent>
         </Tabs>
       </main>
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser} />
+    <SettingsModal
+  isOpen={showSettings}
+  onClose={() => setShowSettings(false)}
+  onLogout={onLogout}
+  currentUser={currentUser}
+/>
     </div>
   );
 }
