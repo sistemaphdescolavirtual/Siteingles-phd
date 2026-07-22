@@ -52,6 +52,31 @@ function normalizeStorageFileName(fileName) {
   return normalized || 'arquivo';
 }
 
+function normalizeExternalUrl(value) {
+  const rawUrl = String(value ?? '').trim();
+
+  if (!rawUrl) {
+    return null;
+  }
+
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(rawUrl)
+    ? rawUrl
+    : `https://${rawUrl}`;
+
+  try {
+    const parsedUrl = new URL(candidate);
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return null;
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
+
 function getBearerToken(req) {
   const authorization = req.headers.authorization;
 
@@ -352,9 +377,36 @@ router.post('/', async (req, res) => {
     const curso = String(req.body.curso ?? '').trim().toLowerCase();
     const titulo = String(req.body.titulo ?? '').trim();
     const descricao = String(req.body.descricao ?? '').trim();
-    const anexos = Array.isArray(req.body.anexos) ? req.body.anexos : [];
+        const anexos = Array.isArray(req.body.anexos) ? req.body.anexos : [];
     const publishAtRaw = req.body.publishAt;
     const dueAtRaw = req.body.dueAt;
+    const normalizedLinkAttachments = [];
+
+    for (const anexo of anexos) {
+      if (String(anexo?.tipo ?? '').toLowerCase() !== 'link') {
+        return res.status(400).json({
+          error:
+            'Arquivos devem ser enviados pela área de upload da atividade.',
+        });
+      }
+
+      const normalizedUrl = normalizeExternalUrl(anexo?.url);
+
+      if (!normalizedUrl) {
+        return res.status(400).json({
+          error:
+            'Um dos links externos é inválido. Use um endereço HTTP ou HTTPS.',
+        });
+      }
+
+      normalizedLinkAttachments.push({
+        nome:
+          String(anexo?.nome ?? '').trim() || normalizedUrl,
+        tipo: 'link',
+        url: normalizedUrl,
+      });
+    }
+
     const publishAt = publishAtRaw
   ? new Date(publishAtRaw)
   : new Date();
@@ -457,14 +509,12 @@ if (dueAt && dueAt <= publishAt) {
       });
     }
 
-    if (anexos.length > 0) {
-      const attachmentsPayload = anexos.map((anexo) => ({
-        activity_id: activity.id,
-        nome: String(anexo.nome ?? 'Anexo').trim(),
-        tipo: ['pdf', 'xls', 'txt', 'link'].includes(anexo.tipo)
-          ? anexo.tipo
-          : 'link',
-        url: String(anexo.url ?? '').trim(),
+   if (normalizedLinkAttachments.length > 0) {
+     const attachmentsPayload = normalizedLinkAttachments.map((anexo) => ({
+       activity_id: activity.id,
+        nome: anexo.nome,
+        tipo: anexo.tipo,
+        url: anexo.url,
       }));
 
       const { error: attachmentsError } = await supabaseAdmin
@@ -622,12 +672,21 @@ router.get(
         });
       }
 
-      if (attachment.tipo === 'link') {
+            if (attachment.tipo === 'link') {
+        const externalUrl = normalizeExternalUrl(attachment.url);
+
+        if (!externalUrl) {
+          return res.status(422).json({
+            error:
+              'O link desta atividade é inválido ou não está mais disponível.',
+          });
+        }
+
         return res.status(200).json({
           attachmentId: attachment.id,
           fileName: attachment.nome,
           tipo: attachment.tipo,
-          viewUrl: attachment.url,
+          viewUrl: externalUrl,
           downloadUrl: null,
           expiresIn: null,
         });

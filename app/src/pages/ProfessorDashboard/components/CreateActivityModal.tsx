@@ -43,6 +43,30 @@ function isAllowedActivityFile(file: File): boolean {
   );
 }
 
+function normalizeExternalUrl(value: string): string | null {
+  const rawUrl = value.trim();
+
+  if (!rawUrl) {
+    return null;
+  }
+
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(rawUrl)
+    ? rawUrl
+    : `https://${rawUrl}`;
+
+  try {
+    const parsedUrl = new URL(candidate);
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return null;
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
 function normalizeCurso(curso?: string | null): 'ingles' | 'enem' {
   const value = String(curso ?? '').toLowerCase();
 
@@ -130,8 +154,13 @@ const [success, setSuccess] = useState(false);
   }
 };
 
-  const handleAddLink = () => {
-    if (!linkInput.trim()) {
+    const handleAddLink = () => {
+    const normalizedUrl = normalizeExternalUrl(linkInput);
+
+    if (!normalizedUrl) {
+      alert(
+        'Digite um link válido. Exemplo: https://www.exemplo.com',
+      );
       return;
     }
 
@@ -139,9 +168,9 @@ const [success, setSuccess] = useState(false);
       ...prev,
       {
         id: `link-${Date.now()}`,
-        nome: linkInput.trim(),
+        nome: normalizedUrl,
         tipo: 'link',
-        url: linkInput.trim(),
+        url: normalizedUrl,
       },
     ]);
 
@@ -388,9 +417,15 @@ for (const file of files) {
 
                   <div className="space-y-3">
                     <div className="flex gap-2">
-                      <Input
+                                            <Input
                         value={linkInput}
                         onChange={(e) => setLinkInput(e.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            handleAddLink();
+                          }
+                        }}
                         placeholder="Link externo..."
                         className="bg-white/5 border-white/10 rounded-xl cursor-text"
                       />

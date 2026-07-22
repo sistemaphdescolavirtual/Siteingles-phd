@@ -27,6 +27,21 @@ interface ActivityModalProps {
   onSubmitted?: () => void | Promise<void>;
 }
 
+function getSafeExternalUrl(value: string): string | null {
+  try {
+    const parsedUrl = new URL(value);
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return null;
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
+
 export function ActivityModal({
   isOpen,
   onClose,
@@ -250,6 +265,11 @@ const handleDownloadAttachment = async (
         const isBusy =
           isOpening || isDownloading;
 
+        const externalUrl =
+          anexo.tipo === 'link'
+            ? getSafeExternalUrl(anexo.url)
+            : null;
+
         return (
           <div
             key={anexo.id}
@@ -269,26 +289,43 @@ const handleDownloadAttachment = async (
               </p>
             </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={isBusy}
-              onClick={() =>
-                void handleOpenAttachment(anexo.id)
-              }
-              className="h-10 px-3 rounded-xl text-brand-neon hover:text-black hover:bg-brand-green"
-              title={
-                anexo.tipo === 'link'
-                  ? 'Abrir link'
-                  : 'Abrir arquivo'
-              }
-            >
-              {isOpening ? (
-                <LoaderCircle className="w-4 h-4 animate-spin" />
+                        {anexo.tipo === 'link' ? (
+              externalUrl ? (
+                <a
+                  href={externalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 items-center justify-center rounded-xl px-3 text-brand-neon hover:bg-brand-green hover:text-black"
+                  title="Abrir link"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
               ) : (
-                <ExternalLink className="w-4 h-4" />
-              )}
-            </Button>
+                <span
+                  className="inline-flex h-10 items-center justify-center rounded-xl px-3 text-red-400/70"
+                  title="Link inválido"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </span>
+              )
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isBusy}
+                onClick={() =>
+                  void handleOpenAttachment(anexo.id)
+                }
+                className="h-10 px-3 rounded-xl text-brand-neon hover:text-black hover:bg-brand-green"
+                title="Abrir arquivo"
+              >
+                {isOpening ? (
+                  <LoaderCircle className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4" />
+                )}
+              </Button>
+            )}
 
             {anexo.tipo !== 'link' && (
               <Button
